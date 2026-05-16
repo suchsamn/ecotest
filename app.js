@@ -400,7 +400,7 @@ function removeBanner(bannerId) {
 
 function restoreBanners() {
   Object.keys(state.settings).forEach(k => {
-    if (k.startsWith('banner_') && !k.startsWith('bannerIsGif_') && !k.startsWith('bannerTitle_')) {
+    if (k.startsWith('banner_') && !k.startsWith('bannerIsGif_')) {
       const bannerId = k.replace('banner_', '');
       const el = document.getElementById(bannerId);
       if (el) {
@@ -409,53 +409,7 @@ function restoreBanners() {
         el.style.backgroundPosition = 'center';
       }
     }
-    if (k.startsWith('bannerTitle_')) {
-      const { imgId, titleId } = JSON.parse(state.settings[k]);
-      const imgEl = document.getElementById(imgId);
-      const titleEl = document.getElementById(titleId);
-      if (imgEl && titleEl) {
-        imgEl.src = state.settings[k.replace('bannerTitle_', 'bannerTitleSrc_')] || '';
-        imgEl.style.display = 'block';
-        titleEl.style.display = 'none';
-      }
-    }
   });
-}
-
-function setBannerTitleMedia(bannerId, imgId, titleId, input) {
-  const file = input.files[0]; if (!file) return;
-  const r = new FileReader();
-  r.onload = e => {
-    const imgEl = document.getElementById(imgId);
-    const titleEl = document.getElementById(titleId);
-    if (imgEl && titleEl) {
-      imgEl.src = e.target.result;
-      imgEl.style.display = 'block';
-      titleEl.style.display = 'none';
-    }
-    state.settings['bannerTitle_' + bannerId] = JSON.stringify({ imgId, titleId });
-    state.settings['bannerTitleSrc_' + bannerId] = e.target.result;
-    save();
-    toast('Título personalizado definido!');
-  };
-  r.readAsDataURL(file);
-  input.value = '';
-  closeBannerMenu();
-}
-
-function removeBannerTitleMedia(bannerId, imgId, titleId, defaultText) {
-  const imgEl = document.getElementById(imgId);
-  const titleEl = document.getElementById(titleId);
-  if (imgEl && titleEl) {
-    imgEl.src = '';
-    imgEl.style.display = 'none';
-    titleEl.style.display = '';
-    titleEl.textContent = defaultText;
-  }
-  delete state.settings['bannerTitle_' + bannerId];
-  delete state.settings['bannerTitleSrc_' + bannerId];
-  save();
-  toast('Título restaurado.');
 }
 
 // ===== TASKS =====
@@ -1584,7 +1538,7 @@ function restoreSpotifyWidget() {
 
 // ===== AUTH =====
 function checkAuth() {
-  const raw = localStorage.getItem('eco_user');
+  const raw = localStorage.getItem('lumen_user') || localStorage.getItem('eco_user');
   if (!raw) {
     try {
       const xhr = new XMLHttpRequest();
@@ -1599,13 +1553,14 @@ function checkAuth() {
 
 function logout() {
   if (confirm('Tem a certeza que quer terminar a sessão?')) {
+    localStorage.removeItem('lumen_user');
     localStorage.removeItem('eco_user');
     window.location.href = 'login.html';
   }
 }
 
 function loadUserProfile() {
-  const user = localStorage.getItem('eco_user');
+  const user = localStorage.getItem('lumen_user') || localStorage.getItem('eco_user');
   if (!user) return;
   const u = JSON.parse(user);
   if (!state.settings.userName && u.name) {

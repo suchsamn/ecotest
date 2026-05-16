@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Eco — Seu Espaço Pessoal</title>
+  <title>Lúmen — Seu Espaço Pessoal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
@@ -13,7 +13,20 @@
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
-    <div class="logo"><span class="logo-icon">🌿</span><span class="logo-text">Eco</span></div>
+    <div class="logo"><span class="logo-icon">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+        <circle cx="11" cy="11" r="4.5" fill="var(--accent3)" opacity="0.92"/>
+        <circle cx="11" cy="11" r="8" stroke="var(--accent3)" stroke-width="1" fill="none" opacity="0.35"/>
+        <line x1="11" y1="1" x2="11" y2="4" stroke="var(--accent3)" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
+        <line x1="11" y1="18" x2="11" y2="21" stroke="var(--accent3)" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
+        <line x1="1" y1="11" x2="4" y2="11" stroke="var(--accent3)" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
+        <line x1="18" y1="11" x2="21" y2="11" stroke="var(--accent3)" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
+        <line x1="3.5" y1="3.5" x2="5.6" y2="5.6" stroke="var(--accent3)" stroke-width="1" stroke-linecap="round" opacity="0.4"/>
+        <line x1="16.4" y1="16.4" x2="18.5" y2="18.5" stroke="var(--accent3)" stroke-width="1" stroke-linecap="round" opacity="0.4"/>
+        <line x1="18.5" y1="3.5" x2="16.4" y2="5.6" stroke="var(--accent3)" stroke-width="1" stroke-linecap="round" opacity="0.4"/>
+        <line x1="5.6" y1="16.4" x2="3.5" y2="18.5" stroke="var(--accent3)" stroke-width="1" stroke-linecap="round" opacity="0.4"/>
+      </svg>
+    </span><span class="logo-text">Lúmen</span></div>
     <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
   </div>
   <nav class="sidebar-nav">
@@ -47,7 +60,7 @@
         <div class="banner-menu-wrap">
           <button class="banner-menu-btn" onclick="toggleBannerMenu('dashboardBanner',this)" title="Editar banner">⊹</button>
           <div class="banner-menu-dropdown" id="bmenu-dashboardBanner">
-            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="openImagePositioner('dashboardBanner', this)" hidden />✦ Alterar imagem de fundo</label>
+            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="openImagePositioner('dashboardBanner', this)" hidden />✦ Alterar imagem</label>
             <button class="banner-menu-item danger" onclick="removeBanner('dashboardBanner');closeBannerMenu()">✕ Remover banner</button>
           </div>
         </div>
@@ -128,24 +141,19 @@
   <div class="page" id="page-planner">
     <div class="page-banner" id="plannerBanner">
       <div class="banner-overlay"></div>
-      <div class="banner-content">
-        <img id="plannerBannerImg" src="" alt="" style="display:none;max-height:80px;max-width:320px;object-fit:contain;border-radius:12px;margin-bottom:0.4rem;" />
-        <div class="banner-greeting" id="plannerBannerTitle">Planejador ✦</div>
-      </div>
+      <div class="banner-content"><div class="banner-greeting">Planejador ✦</div></div>
       <div class="banner-controls">
         <div class="banner-menu-wrap">
           <button class="banner-menu-btn" onclick="toggleBannerMenu('plannerBanner',this)" title="Editar banner">⊹</button>
           <div class="banner-menu-dropdown" id="bmenu-plannerBanner">
-            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="openImagePositioner('plannerBanner', this)" hidden />✦ Alterar imagem de fundo</label>
-            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="setBannerTitleMedia('plannerBanner','plannerBannerImg','plannerBannerTitle',this)" hidden />✦ Alterar título (imagem/GIF)</label>
-            <button class="banner-menu-item" onclick="removeBannerTitleMedia('plannerBanner','plannerBannerImg','plannerBannerTitle','Planejador ✦');closeBannerMenu()">↩ Restaurar título</button>
+            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="openImagePositioner('plannerBanner', this)" hidden />✦ Alterar imagem</label>
             <button class="banner-menu-item danger" onclick="removeBanner('plannerBanner');closeBannerMenu()">✕ Remover banner</button>
           </div>
         </div>
       </div>
     </div>
     <div class="page-body">
-      <div class="page-header"><button class="btn-primary" onclick="openModal('taskModal')">+ Nova Tarefa</button></div>
+      <div class="page-header"><h1 class="page-title">Planejador</h1><button class="btn-primary" onclick="openModal('taskModal')">+ Nova Tarefa</button></div>
       <div class="tab-bar">
         <button class="tab active" onclick="filterTasks('all', this)">Todas</button>
         <button class="tab" onclick="filterTasks('today', this)">Hoje</button>
@@ -164,24 +172,19 @@
   <div class="page" id="page-finance">
     <div class="page-banner" id="financeBanner">
       <div class="banner-overlay"></div>
-      <div class="banner-content">
-        <img id="financeBannerImg" src="" alt="" style="display:none;max-height:80px;max-width:320px;object-fit:contain;border-radius:12px;margin-bottom:0.4rem;" />
-        <div class="banner-greeting" id="financeBannerTitle">Finanças ◈</div>
-      </div>
+      <div class="banner-content"><div class="banner-greeting">Finanças ◈</div></div>
       <div class="banner-controls">
         <div class="banner-menu-wrap">
           <button class="banner-menu-btn" onclick="toggleBannerMenu('financeBanner',this)" title="Editar banner">⊹</button>
           <div class="banner-menu-dropdown" id="bmenu-financeBanner">
-            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="openImagePositioner('financeBanner', this)" hidden />✦ Alterar imagem de fundo</label>
-            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="setBannerTitleMedia('financeBanner','financeBannerImg','financeBannerTitle',this)" hidden />✦ Alterar título (imagem/GIF)</label>
-            <button class="banner-menu-item" onclick="removeBannerTitleMedia('financeBanner','financeBannerImg','financeBannerTitle','Finanças ◈');closeBannerMenu()">↩ Restaurar título</button>
+            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="openImagePositioner('financeBanner', this)" hidden />✦ Alterar imagem</label>
             <button class="banner-menu-item danger" onclick="removeBanner('financeBanner');closeBannerMenu()">✕ Remover banner</button>
           </div>
         </div>
       </div>
     </div>
     <div class="page-body">
-      <div class="page-header"><button class="btn-primary" onclick="openTransactionModal()">+ Adicionar</button></div>
+      <div class="page-header"><h1 class="page-title">Finanças</h1><button class="btn-primary" onclick="openTransactionModal()">+ Adicionar</button></div>
       <div class="cards-grid">
         <div class="card card-green"><div class="card-icon">↑</div><div class="card-info"><div class="card-title">Entradas</div><div class="card-value" id="totalIncome">€ 0,00</div></div></div>
         <div class="card card-red"><div class="card-icon">↓</div><div class="card-info"><div class="card-title">Saídas</div><div class="card-value" id="totalExpense">€ 0,00</div></div></div>
@@ -229,24 +232,19 @@
   <div class="page" id="page-goals">
     <div class="page-banner" id="goalsBanner">
       <div class="banner-overlay"></div>
-      <div class="banner-content">
-        <img id="goalsBannerImg" src="" alt="" style="display:none;max-height:80px;max-width:320px;object-fit:contain;border-radius:12px;margin-bottom:0.4rem;" />
-        <div class="banner-greeting" id="goalsBannerTitle">Metas ◎</div>
-      </div>
+      <div class="banner-content"><div class="banner-greeting">Metas ◎</div></div>
       <div class="banner-controls">
         <div class="banner-menu-wrap">
           <button class="banner-menu-btn" onclick="toggleBannerMenu('goalsBanner',this)" title="Editar banner">⊹</button>
           <div class="banner-menu-dropdown" id="bmenu-goalsBanner">
-            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="openImagePositioner('goalsBanner', this)" hidden />✦ Alterar imagem de fundo</label>
-            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="setBannerTitleMedia('goalsBanner','goalsBannerImg','goalsBannerTitle',this)" hidden />✦ Alterar título (imagem/GIF)</label>
-            <button class="banner-menu-item" onclick="removeBannerTitleMedia('goalsBanner','goalsBannerImg','goalsBannerTitle','Metas ◎');closeBannerMenu()">↩ Restaurar título</button>
+            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="openImagePositioner('goalsBanner', this)" hidden />✦ Alterar imagem</label>
             <button class="banner-menu-item danger" onclick="removeBanner('goalsBanner');closeBannerMenu()">✕ Remover banner</button>
           </div>
         </div>
       </div>
     </div>
     <div class="page-body">
-      <div class="page-header"><button class="btn-primary" onclick="openModal('goalModal')">+ Nova Meta</button></div>
+      <div class="page-header"><h1 class="page-title">Metas</h1><button class="btn-primary" onclick="openModal('goalModal')">+ Nova Meta</button></div>
       <div id="goalsList" class="goals-grid"></div>
     </div>
   </div>
@@ -255,17 +253,12 @@
   <div class="page" id="page-calendar">
     <div class="page-banner" id="calendarBanner">
       <div class="banner-overlay"></div>
-      <div class="banner-content">
-        <img id="calendarBannerImg" src="" alt="" style="display:none;max-height:80px;max-width:320px;object-fit:contain;border-radius:12px;margin-bottom:0.4rem;" />
-        <div class="banner-greeting" id="calendarBannerTitle">Calendário ⬡</div>
-      </div>
+      <div class="banner-content"><div class="banner-greeting">Calendário ⬡</div></div>
       <div class="banner-controls">
         <div class="banner-menu-wrap">
           <button class="banner-menu-btn" onclick="toggleBannerMenu('calendarBanner',this)" title="Editar banner">⊹</button>
           <div class="banner-menu-dropdown" id="bmenu-calendarBanner">
-            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="openImagePositioner('calendarBanner', this)" hidden />✦ Alterar imagem de fundo</label>
-            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="setBannerTitleMedia('calendarBanner','calendarBannerImg','calendarBannerTitle',this)" hidden />✦ Alterar título (imagem/GIF)</label>
-            <button class="banner-menu-item" onclick="removeBannerTitleMedia('calendarBanner','calendarBannerImg','calendarBannerTitle','Calendário ⬡');closeBannerMenu()">↩ Restaurar título</button>
+            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="openImagePositioner('calendarBanner', this)" hidden />✦ Alterar imagem</label>
             <button class="banner-menu-item danger" onclick="removeBanner('calendarBanner');closeBannerMenu()">✕ Remover banner</button>
           </div>
         </div>
@@ -273,6 +266,7 @@
     </div>
     <div class="page-body">
       <div class="page-header">
+        <h1 class="page-title">Calendário & To-do</h1>
         <button class="btn-primary" onclick="openCalendarDay(new Date().toISOString().split('T')[0])">+ Evento Hoje</button>
       </div>
       <div class="calendar-layout">
@@ -299,17 +293,12 @@
   <div class="page" id="page-habits">
     <div class="page-banner" id="habitsBanner">
       <div class="banner-overlay"></div>
-      <div class="banner-content">
-        <img id="habitsBannerImg" src="" alt="" style="display:none;max-height:80px;max-width:320px;object-fit:contain;border-radius:12px;margin-bottom:0.4rem;" />
-        <div class="banner-greeting" id="habitsBannerTitle">Hábitos ◉</div>
-      </div>
+      <div class="banner-content"><div class="banner-greeting">Hábitos ◉</div></div>
       <div class="banner-controls">
         <div class="banner-menu-wrap">
           <button class="banner-menu-btn" onclick="toggleBannerMenu('habitsBanner',this)" title="Editar banner">⊹</button>
           <div class="banner-menu-dropdown" id="bmenu-habitsBanner">
-            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="openImagePositioner('habitsBanner', this)" hidden />✦ Alterar imagem de fundo</label>
-            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="setBannerTitleMedia('habitsBanner','habitsBannerImg','habitsBannerTitle',this)" hidden />✦ Alterar título (imagem/GIF)</label>
-            <button class="banner-menu-item" onclick="removeBannerTitleMedia('habitsBanner','habitsBannerImg','habitsBannerTitle','Hábitos ◉');closeBannerMenu()">↩ Restaurar título</button>
+            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="openImagePositioner('habitsBanner', this)" hidden />✦ Alterar imagem</label>
             <button class="banner-menu-item danger" onclick="removeBanner('habitsBanner');closeBannerMenu()">✕ Remover banner</button>
           </div>
         </div>
@@ -318,6 +307,7 @@
     <div class="page-body">
       <div class="page-header">
         <div>
+          <h1 class="page-title">Hábitos & Jardim</h1>
           <p class="page-subtitle" id="habitsSubtitle">Os teus hábitos, cultivados dia a dia.</p>
         </div>
         <button class="btn-primary" id="habitsAddBtn" onclick="openModal('habitModal')">+ Novo Hábito</button>
@@ -353,24 +343,19 @@
   <div class="page" id="page-notes">
     <div class="page-banner" id="notesBanner">
       <div class="banner-overlay"></div>
-      <div class="banner-content">
-        <img id="notesBannerImg" src="" alt="" style="display:none;max-height:80px;max-width:320px;object-fit:contain;border-radius:12px;margin-bottom:0.4rem;" />
-        <div class="banner-greeting" id="notesBannerTitle">Notas ✧</div>
-      </div>
+      <div class="banner-content"><div class="banner-greeting">Notas ✧</div></div>
       <div class="banner-controls">
         <div class="banner-menu-wrap">
           <button class="banner-menu-btn" onclick="toggleBannerMenu('notesBanner',this)" title="Editar banner">⊹</button>
           <div class="banner-menu-dropdown" id="bmenu-notesBanner">
-            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="openImagePositioner('notesBanner', this)" hidden />✦ Alterar imagem de fundo</label>
-            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="setBannerTitleMedia('notesBanner','notesBannerImg','notesBannerTitle',this)" hidden />✦ Alterar título (imagem/GIF)</label>
-            <button class="banner-menu-item" onclick="removeBannerTitleMedia('notesBanner','notesBannerImg','notesBannerTitle','Notas ✧');closeBannerMenu()">↩ Restaurar título</button>
+            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="openImagePositioner('notesBanner', this)" hidden />✦ Alterar imagem</label>
             <button class="banner-menu-item danger" onclick="removeBanner('notesBanner');closeBannerMenu()">✕ Remover banner</button>
           </div>
         </div>
       </div>
     </div>
     <div class="page-body">
-      <div class="page-header"><button class="btn-primary" onclick="openModal('noteModal')">+ Nova Nota</button></div>
+      <div class="page-header"><h1 class="page-title">Notas</h1><button class="btn-primary" onclick="openModal('noteModal')">+ Nova Nota</button></div>
       <div id="notesList" class="notes-grid"></div>
     </div>
   </div>
@@ -379,17 +364,12 @@
   <div class="page" id="page-morning">
     <div class="page-banner" id="morningBanner">
       <div class="banner-overlay"></div>
-      <div class="banner-content">
-        <img id="morningBannerImg" src="" alt="" style="display:none;max-height:80px;max-width:320px;object-fit:contain;border-radius:12px;margin-bottom:0.4rem;" />
-        <div class="banner-greeting" id="morningBannerTitle">Rotina Matinal ❋</div>
-      </div>
+      <div class="banner-content"><div class="banner-greeting">Rotina Matinal ❋</div></div>
       <div class="banner-controls">
         <div class="banner-menu-wrap">
           <button class="banner-menu-btn" onclick="toggleBannerMenu('morningBanner',this)" title="Editar banner">⊹</button>
           <div class="banner-menu-dropdown" id="bmenu-morningBanner">
-            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="openImagePositioner('morningBanner', this)" hidden />✦ Alterar imagem de fundo</label>
-            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="setBannerTitleMedia('morningBanner','morningBannerImg','morningBannerTitle',this)" hidden />✦ Alterar título (imagem/GIF)</label>
-            <button class="banner-menu-item" onclick="removeBannerTitleMedia('morningBanner','morningBannerImg','morningBannerTitle','Rotina Matinal ❋');closeBannerMenu()">↩ Restaurar título</button>
+            <label class="banner-menu-item"><input type="file" accept="image/*,image/gif" onchange="openImagePositioner('morningBanner', this)" hidden />✦ Alterar imagem</label>
             <button class="banner-menu-item danger" onclick="removeBanner('morningBanner');closeBannerMenu()">✕ Remover banner</button>
           </div>
         </div>
@@ -398,6 +378,7 @@
     <div class="page-body">
       <div class="page-header">
         <div>
+          <h1 class="page-title">Rotina Matinal</h1>
           <p class="page-subtitle" id="morningGreeting">Bom dia. Como começa o teu dia, começa a tua vida.</p>
         </div>
         <button class="btn-primary" onclick="openModal('morningItemModal')">+ Adicionar</button>
@@ -419,7 +400,7 @@
   <!-- SETTINGS -->
   <div class="page" id="page-settings">
     <div class="page-body" style="padding-top:2rem;">
-      <div class="page-header" style="margin-bottom:2rem;"><h1 class="page-title">Configurações</h1></div>
+      <div class="page-header"><h1 class="page-title">Configurações</h1></div>
 
       <!-- Perfil -->
       <div class="section-card">
@@ -673,7 +654,7 @@
         <option value="outro">📝 Outro</option>
       </select>
       <textarea id="feedbackText" class="input-field" rows="5" placeholder="Descreva o bug, sugestão ou comentário..."></textarea>
-      <p style="font-size:0.75rem;color:var(--text3);">O feedback é guardado localmente. Obrigado por ajudar a melhorar o Eco! ✦</p>
+      <p style="font-size:0.75rem;color:var(--text3);">O feedback é guardado localmente. Obrigado por ajudar a melhorar o Lúmen! ✦</p>
     </div>
     <div class="modal-footer">
       <button class="btn-ghost" onclick="closeModal('feedbackModal')">Cancelar</button>

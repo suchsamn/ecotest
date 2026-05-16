@@ -76,6 +76,7 @@ async function _syncToFirestore() {
   const db = window._firestoreDb;
   const uid_user = window._currentUid;
   if (!db || !uid_user) return;
+  _syncStart();
   try {
     const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     // Imagens de notas inline (base64) ainda são excluídas — ficam só no localStorage
@@ -83,7 +84,11 @@ async function _syncToFirestore() {
     const notesForCloud = (state.notes || []).map(n => ({ ...n, images: [] }));
     const stateForCloud = { ...state, notes: notesForCloud };
     await setDoc(doc(db, 'users', uid_user), { data: JSON.stringify(stateForCloud) });
-  } catch (e) { console.warn('[Lúmen] Firestore save erro:', e); }
+    _syncEnd();
+  } catch (e) {
+    console.warn('[Lúmen] Firestore save erro:', e);
+    _syncEnd();
+  }
 }
 
 async function loadFromFirestore() {
@@ -160,19 +165,66 @@ function toast(msg) {
 }
 function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 
+// ===== SYNC INDICATOR =====
+let _syncCount = 0;
+function _syncStart() {
+  _syncCount++;
+  let ind = document.getElementById('syncIndicator');
+  if (!ind) {
+    ind = document.createElement('div');
+    ind.id = 'syncIndicator';
+    document.body.appendChild(ind);
+  }
+  ind.classList.add('syncing');
+}
+function _syncEnd() {
+  _syncCount = Math.max(0, _syncCount - 1);
+  if (_syncCount === 0) {
+    const ind = document.getElementById('syncIndicator');
+    if (ind) ind.classList.remove('syncing');
+  }
+}
+
+// ===== COMPRESS IMAGE BEFORE UPLOAD =====
+function _compressDataUrl(dataUrl, maxW, maxH, quality) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.naturalWidth, h = img.naturalHeight;
+      const ratio = Math.min(maxW / w, maxH / h, 1); // nunca ampliar
+      w = Math.round(w * ratio);
+      h = Math.round(h * ratio);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataUrl); // fallback sem compressão
+    img.src = dataUrl;
+  });
+}
+
 // ===== FIREBASE STORAGE UPLOAD =====
 async function _uploadToStorage(path, dataUrl) {
   const storage = window._firebaseStorage;
   const uid_user = window._currentUid;
   if (!storage || !uid_user) return null;
+  _syncStart();
   try {
+    // Comprimir JPEGs antes do upload (banners, profilePic, greetingMedia)
+    let uploadData = dataUrl;
+    if (!path.endsWith('.gif') && dataUrl.startsWith('data:')) {
+      uploadData = await _compressDataUrl(dataUrl, 1600, 900, 0.75);
+    }
     const { ref, uploadString, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js');
     const storageRef = ref(storage, `users/${uid_user}/${path}`);
-    // dataUrl pode ser base64 (imagem) ou data URL
-    const snapshot = await uploadString(storageRef, dataUrl, 'data_url');
-    return await getDownloadURL(snapshot.ref);
+    const snapshot = await uploadString(storageRef, uploadData, 'data_url');
+    const url = await getDownloadURL(snapshot.ref);
+    _syncEnd();
+    return url;
   } catch (e) {
     console.warn('[Lúmen] Storage upload erro:', e);
+    _syncEnd();
     return null;
   }
 }
@@ -456,12 +508,11 @@ async function applyBannerPosition() {
   const scale = (positioner.zoom / 100) * Math.max(vw / iw, vh / ih);
 
   const canvas = document.createElement('canvas');
-  canvas.width = vw * 2;
-  canvas.height = vh * 2;
+  canvas.width = vw;
+  canvas.height = vh;
   const ctx = canvas.getContext('2d');
-  ctx.scale(2, 2);
   ctx.drawImage(img, positioner.offsetX, positioner.offsetY, iw * scale, ih * scale);
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
 
   const banner = document.getElementById(positioner.bannerId);
   banner.style.backgroundImage = `url(${dataUrl})`;

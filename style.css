@@ -439,3 +439,46 @@ select.input-field option{background:var(--bg2);}
   .focus-timer{font-size:5rem;}
   .garden-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));}
 }
+/* ===== SIDEBAR OVERLAY (mobile swipe) ===== */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 99;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.sidebar-overlay.active {
+  display: block;
+  opacity: 1;
+}
+
+@media (max-width: 768px) {
+  /* No mobile, sidebar começa fechada por padrão */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease, width 0.3s ease;
+    width: var(--sidebar-w) !important;
+  }
+  .sidebar:not(.collapsed) {
+    transform: translateX(0);
+  }
+  .sidebar.collapsed {
+    transform: translateX(-100%);
+    width: var(--sidebar-w) !important;
+  }
+  /* Labels e logo visíveis quando sidebar aberta no mobile */
+  .sidebar:not(.collapsed) .nav-label,
+  .sidebar:not(.collapsed) .nav-section-label,
+  .sidebar:not(.collapsed) .sidebar-quote,
+  .sidebar:not(.collapsed) .logo-text {
+    display: revert;
+  }
+  /* Main ocupa tela toda no mobile */
+  .main {
+    margin-left: 0 !important;
+  }
+}

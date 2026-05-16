@@ -2,7 +2,8 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Bloqueia zoom (comportamento de app nativa) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Lúmen — Seu Espaço Pessoal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
@@ -53,6 +54,9 @@
   </nav>
   <div class="sidebar-quote"><p>"Cuide do que floresce dentro de você."</p></div>
 </aside>
+
+<!-- Overlay para fechar sidebar no mobile com toque -->
+<div id="sidebarOverlay" class="sidebar-overlay" onclick="closeSidebarMobile()"></div>
 
 <main class="main" id="main">
 
@@ -733,16 +737,10 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  // Expõe globalmente para o app.js usar
   window._firestoreDb = db;
 
-  // Quando o utilizador estiver autenticado, expõe o uid
   onAuthStateChanged(auth, user => {
-    if (user) {
-      window._currentUid = user.uid;
-    } else {
-      window._currentUid = null;
-    }
+    window._currentUid = user ? user.uid : null;
   });
 
   window._doFirebaseSignOut = async () => {
@@ -751,8 +749,59 @@
 </script>
 <script src="app.js"></script>
 
-<!-- PWA: Service Worker -->
 <script>
+  // ===== SWIPE PARA ABRIR/FECHAR SIDEBAR (mobile) =====
+  (function() {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    const SWIPE_THRESHOLD = 48;   // px mínimos para contar como swipe
+    const EDGE_ZONE = 28;          // px da borda esquerda para abrir
+
+    document.addEventListener('touchstart', e => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      const sidebar = document.getElementById('sidebar');
+
+      // Ignora se o movimento foi mais vertical do que horizontal
+      if (Math.abs(dy) > Math.abs(dx)) return;
+
+      const isCollapsed = sidebar.classList.contains('collapsed');
+
+      // Swipe direita a partir da borda esquerda → abre sidebar
+      if (dx > SWIPE_THRESHOLD && touchStartX < EDGE_ZONE && isCollapsed) {
+        sidebar.classList.remove('collapsed');
+        document.getElementById('sidebarOverlay').classList.add('active');
+      }
+
+      // Swipe esquerda → fecha sidebar
+      if (dx < -SWIPE_THRESHOLD && !isCollapsed) {
+        sidebar.classList.add('collapsed');
+        document.getElementById('sidebarOverlay').classList.remove('active');
+      }
+    }, { passive: true });
+  })();
+
+  function closeSidebarMobile() {
+    document.getElementById('sidebar').classList.add('collapsed');
+    document.getElementById('sidebarOverlay').classList.remove('active');
+  }
+
+  // Quando navegar pelo menu no mobile, fecha a sidebar
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      if (window.innerWidth < 768) {
+        document.getElementById('sidebar').classList.add('collapsed');
+        document.getElementById('sidebarOverlay').classList.remove('active');
+      }
+    });
+  });
+
+  // ===== PWA: Service Worker =====
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/service-worker.js')

@@ -59,32 +59,76 @@ let positioner = {
 
 // ===== UTILS =====
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
-function save() { localStorage.setItem('eco_v2', JSON.stringify(state)); }
+
+// ===== FIRESTORE SYNC =====
+let _saveDebounceTimer = null;
+
+function save() {
+  localStorage.setItem('eco_v2', JSON.stringify(state));
+  if (_saveDebounceTimer) clearTimeout(_saveDebounceTimer);
+  _saveDebounceTimer = setTimeout(() => { _syncToFirestore(); }, 1500);
+}
+
+async function _syncToFirestore() {
+  const db = window._firestoreDb;
+  const uid_user = window._currentUid;
+  if (!db || !uid_user) return;
+  try {
+    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await setDoc(doc(db, 'users', uid_user), { data: JSON.stringify(state) });
+  } catch (e) {
+    console.warn('[Lúmen] Erro ao sincronizar com Firestore:', e);
+  }
+}
+
+async function loadFromFirestore() {
+  const db = window._firestoreDb;
+  const uid_user = window._currentUid;
+  if (!db || !uid_user) return false;
+  try {
+    const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDoc(doc(db, 'users', uid_user));
+    if (snap.exists()) {
+      const parsed = JSON.parse(snap.data().data);
+      state = { ...state, ...parsed };
+      _sanitizeState();
+      localStorage.setItem('eco_v2', JSON.stringify(state));
+      return true;
+    }
+  } catch (e) {
+    console.warn('[Lúmen] Erro ao carregar do Firestore:', e);
+  }
+  return false;
+}
+
+function _sanitizeState() {
+  if (!state.categories || state.categories.length === 0) {
+    state.categories = [
+      { id: uid(), icon: '🍽', name: 'Alimentação' },
+      { id: uid(), icon: '🚌', name: 'Transporte' },
+      { id: uid(), icon: '💊', name: 'Saúde' },
+      { id: uid(), icon: '🎮', name: 'Lazer' },
+      { id: uid(), icon: '📚', name: 'Educação' },
+      { id: uid(), icon: '🏠', name: 'Casa' },
+      { id: uid(), icon: '👕', name: 'Roupas' },
+      { id: uid(), icon: '💰', name: 'Poupança' },
+      { id: uid(), icon: '📦', name: 'Outro' },
+    ];
+  }
+  if (!state.notes) state.notes = [];
+  if (!state.calendarEvents) state.calendarEvents = [];
+  if (!state.morningItems) state.morningItems = [];
+  if (!state.morningDone) state.morningDone = {};
+  if (!state.focusQuotes) state.focusQuotes = ['respira fundo ✦'];
+  state.currentTransType = null;
+}
+
 function load() {
   const d = localStorage.getItem('eco_v2');
   if (d) {
     const parsed = JSON.parse(d);
     state = { ...state, ...parsed };
-    if (!state.categories || state.categories.length === 0) {
-      state.categories = [
-        { id: uid(), icon: '🍽', name: 'Alimentação' },
-        { id: uid(), icon: '🚌', name: 'Transporte' },
-        { id: uid(), icon: '💊', name: 'Saúde' },
-        { id: uid(), icon: '🎮', name: 'Lazer' },
-        { id: uid(), icon: '📚', name: 'Educação' },
-        { id: uid(), icon: '🏠', name: 'Casa' },
-        { id: uid(), icon: '👕', name: 'Roupas' },
-        { id: uid(), icon: '💰', name: 'Poupança' },
-        { id: uid(), icon: '📦', name: 'Outro' },
-      ];
-    }
-    if (!state.notes) state.notes = [];
-    if (!state.calendarEvents) state.calendarEvents = [];
-    if (!state.morningItems) state.morningItems = [];
-    if (!state.morningDone) state.morningDone = {};
-    if (!state.focusQuotes) state.focusQuotes = ['respira fundo ✦'];
-    // FIX: Sempre resetar tipo de transação para null (não selecionado)
-    state.currentTransType = null;
+    _sanitizeState();
   }
 }
 function fmtEur(n) {
@@ -153,7 +197,12 @@ function showPage(id) {
   renderAll();
 }
 function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('collapsed');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  sidebar.classList.toggle('collapsed');
+  if (overlay) {
+    overlay.classList.toggle('active', !sidebar.classList.contains('collapsed'));
+  }
 }
 
 // ===== MODALS =====
@@ -1584,15 +1633,43 @@ function loadUserProfile() {
 }
 
 // ===== INIT =====
-function init() {
+async function init() {
   checkAuth();
   load();
-  loadUserProfile();
+  _applySettings();
   restoreBanners();
   updateAccountSelect();
   updateCategorySelect();
   renderAll();
+  loadUserProfile();
+  restoreSpotifyWidget();
+  document.querySelectorAll('input[type="date"]').forEach(el => { if (!el.value) el.value = today(); });
+  setInterval(updateGreeting, 60000);
 
+  // Aguarda Firebase Auth identificar o utilizador e sincroniza Firestore
+  let attempts = 0;
+  const waitAndSync = async () => {
+    if (window._currentUid && window._firestoreDb) {
+      const loaded = await loadFromFirestore();
+      if (loaded) {
+        _applySettings();
+        restoreBanners();
+        updateAccountSelect();
+        updateCategorySelect();
+        renderAll();
+        loadUserProfile();
+        restoreSpotifyWidget();
+        toast('✦ Dados sincronizados');
+      }
+    } else if (attempts < 20) {
+      attempts++;
+      setTimeout(waitAndSync, 300);
+    }
+  };
+  waitAndSync();
+}
+
+function _applySettings() {
   if (state.settings.userName) {
     const el = document.getElementById('userName');
     if (el) el.value = state.settings.userName;
@@ -1611,10 +1688,6 @@ function init() {
       if (b.getAttribute('onclick')?.includes(`'${state.settings.theme}'`)) b.classList.add('active');
     });
   }
-
-  restoreSpotifyWidget();
-  document.querySelectorAll('input[type="date"]').forEach(el => { if (!el.value) el.value = today(); });
-  setInterval(updateGreeting, 60000);
 }
 
 document.addEventListener('DOMContentLoaded', init);

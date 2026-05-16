@@ -76,9 +76,7 @@ async function _syncToFirestore() {
   try {
     const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     await setDoc(doc(db, 'users', uid_user), { data: JSON.stringify(state) });
-  } catch (e) {
-    console.warn('[Lúmen] Erro ao sincronizar com Firestore:', e);
-  }
+  } catch (e) { console.warn('[Lúmen] Firestore save erro:', e); }
 }
 
 async function loadFromFirestore() {
@@ -95,9 +93,7 @@ async function loadFromFirestore() {
       localStorage.setItem('eco_v2', JSON.stringify(state));
       return true;
     }
-  } catch (e) {
-    console.warn('[Lúmen] Erro ao carregar do Firestore:', e);
-  }
+  } catch (e) { console.warn('[Lúmen] Firestore load erro:', e); }
   return false;
 }
 
@@ -198,11 +194,8 @@ function showPage(id) {
 }
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('sidebarOverlay');
   sidebar.classList.toggle('collapsed');
-  if (overlay) {
-    overlay.classList.toggle('active', !sidebar.classList.contains('collapsed'));
-  }
+  // No desktop, a seta do header basta. No mobile, a lógica é gerida pelo openSidebarMobile/closeSidebarMobile.
 }
 
 // ===== MODALS =====
@@ -1646,47 +1639,28 @@ async function init() {
   document.querySelectorAll('input[type="date"]').forEach(el => { if (!el.value) el.value = today(); });
   setInterval(updateGreeting, 60000);
 
-  // Aguarda Firebase Auth identificar o utilizador e sincroniza Firestore
   let attempts = 0;
   const waitAndSync = async () => {
     if (window._currentUid && window._firestoreDb) {
       const loaded = await loadFromFirestore();
       if (loaded) {
-        _applySettings();
-        restoreBanners();
-        updateAccountSelect();
-        updateCategorySelect();
-        renderAll();
-        loadUserProfile();
-        restoreSpotifyWidget();
+        _applySettings(); restoreBanners();
+        updateAccountSelect(); updateCategorySelect();
+        renderAll(); loadUserProfile(); restoreSpotifyWidget();
         toast('✦ Dados sincronizados');
       }
-    } else if (attempts < 20) {
-      attempts++;
-      setTimeout(waitAndSync, 300);
-    }
+    } else if (attempts < 20) { attempts++; setTimeout(waitAndSync, 300); }
   };
   waitAndSync();
 }
 
 function _applySettings() {
-  if (state.settings.userName) {
-    const el = document.getElementById('userName');
-    if (el) el.value = state.settings.userName;
-  }
-  if (state.settings.profilePic) {
-    const pic = document.getElementById('profilePic');
-    if (pic) { pic.src = state.settings.profilePic; pic.style.display = 'block'; }
-  }
-  if (state.settings.greetingMedia) {
-    const removeBtn = document.getElementById('removeGreetingBtn');
-    if (removeBtn) removeBtn.style.display = 'inline-flex';
-  }
+  if (state.settings.userName) { const el = document.getElementById('userName'); if (el) el.value = state.settings.userName; }
+  if (state.settings.profilePic) { const pic = document.getElementById('profilePic'); if (pic) { pic.src = state.settings.profilePic; pic.style.display = 'block'; } }
+  if (state.settings.greetingMedia) { const r = document.getElementById('removeGreetingBtn'); if (r) r.style.display = 'inline-flex'; }
   if (state.settings.theme) {
     document.documentElement.setAttribute('data-theme', state.settings.theme);
-    document.querySelectorAll('.theme-btn').forEach(b => {
-      if (b.getAttribute('onclick')?.includes(`'${state.settings.theme}'`)) b.classList.add('active');
-    });
+    document.querySelectorAll('.theme-btn').forEach(b => { if (b.getAttribute('onclick')?.includes(`'${state.settings.theme}'`)) b.classList.add('active'); });
   }
 }
 

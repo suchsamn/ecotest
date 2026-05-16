@@ -2,21 +2,20 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <!-- Bloqueia zoom (comportamento de app nativa) -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Lúmen — Seu Espaço Pessoal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
-
   <!-- PWA -->
-  <link rel="manifest" href="/manifest.json" />
+  <link rel="manifest" href="./manifest.json" />
   <meta name="theme-color" content="#0a0a0f" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Lúmen" />
-  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
 </head>
 <body>
 
@@ -55,7 +54,10 @@
   <div class="sidebar-quote"><p>"Cuide do que floresce dentro de você."</p></div>
 </aside>
 
-<!-- Overlay para fechar sidebar no mobile com toque -->
+<!-- Botão flutuante para reabrir sidebar no mobile -->
+<button class="sidebar-fab" id="sidebarFab" onclick="openSidebarMobile()" title="Abrir menu">›</button>
+
+<!-- Overlay para fechar sidebar tocando fora -->
 <div id="sidebarOverlay" class="sidebar-overlay" onclick="closeSidebarMobile()"></div>
 
 <main class="main" id="main">
@@ -738,24 +740,49 @@
   const db = getFirestore(app);
 
   window._firestoreDb = db;
-
-  onAuthStateChanged(auth, user => {
-    window._currentUid = user ? user.uid : null;
-  });
-
-  window._doFirebaseSignOut = async () => {
-    try { await signOut(auth); } catch(e) {}
-  };
+  onAuthStateChanged(auth, user => { window._currentUid = user ? user.uid : null; });
+  window._doFirebaseSignOut = async () => { try { await signOut(auth); } catch(e) {} };
 </script>
 <script src="app.js"></script>
 
 <script>
-  // ===== SWIPE PARA ABRIR/FECHAR SIDEBAR (mobile) =====
+  // ===== SIDEBAR MOBILE: abrir / fechar =====
+  function openSidebarMobile() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const fab = document.getElementById('sidebarFab');
+    sidebar.classList.remove('collapsed');
+    overlay.classList.add('active');
+    if (fab) fab.style.display = 'none';
+  }
+
+  function closeSidebarMobile() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const fab = document.getElementById('sidebarFab');
+    sidebar.classList.add('collapsed');
+    overlay.classList.remove('active');
+    if (fab && window.innerWidth <= 768) fab.style.display = 'flex';
+  }
+
+  // Fechar sidebar ao navegar no mobile
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      if (window.innerWidth <= 768) closeSidebarMobile();
+    });
+  });
+
+  // No mobile, começa com sidebar fechada e FAB visível
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.add('collapsed');
+    document.getElementById('sidebarFab').style.display = 'flex';
+  }
+
+  // ===== SWIPE para abrir sidebar (arrastar da borda esquerda) =====
   (function() {
-    let touchStartX = 0;
-    let touchStartY = 0;
-    const SWIPE_THRESHOLD = 48;   // px mínimos para contar como swipe
-    const EDGE_ZONE = 28;          // px da borda esquerda para abrir
+    let touchStartX = 0, touchStartY = 0;
+    const SWIPE_THRESHOLD = 50;
+    const EDGE_ZONE = 30;
 
     document.addEventListener('touchstart', e => {
       touchStartX = e.touches[0].clientX;
@@ -765,48 +792,28 @@
     document.addEventListener('touchend', e => {
       const dx = e.changedTouches[0].clientX - touchStartX;
       const dy = e.changedTouches[0].clientY - touchStartY;
+      if (Math.abs(dy) > Math.abs(dx)) return; // movimento mais vertical — ignora
+
       const sidebar = document.getElementById('sidebar');
-
-      // Ignora se o movimento foi mais vertical do que horizontal
-      if (Math.abs(dy) > Math.abs(dx)) return;
-
       const isCollapsed = sidebar.classList.contains('collapsed');
 
-      // Swipe direita a partir da borda esquerda → abre sidebar
+      // Swipe direita a partir da borda esquerda → abre
       if (dx > SWIPE_THRESHOLD && touchStartX < EDGE_ZONE && isCollapsed) {
-        sidebar.classList.remove('collapsed');
-        document.getElementById('sidebarOverlay').classList.add('active');
+        openSidebarMobile();
       }
-
-      // Swipe esquerda → fecha sidebar
+      // Swipe esquerda → fecha
       if (dx < -SWIPE_THRESHOLD && !isCollapsed) {
-        sidebar.classList.add('collapsed');
-        document.getElementById('sidebarOverlay').classList.remove('active');
+        closeSidebarMobile();
       }
     }, { passive: true });
   })();
 
-  function closeSidebarMobile() {
-    document.getElementById('sidebar').classList.add('collapsed');
-    document.getElementById('sidebarOverlay').classList.remove('active');
-  }
-
-  // Quando navegar pelo menu no mobile, fecha a sidebar
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', () => {
-      if (window.innerWidth < 768) {
-        document.getElementById('sidebar').classList.add('collapsed');
-        document.getElementById('sidebarOverlay').classList.remove('active');
-      }
-    });
-  });
-
   // ===== PWA: Service Worker =====
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/service-worker.js')
-        .then(reg => console.log('[Lúmen] SW registado:', reg.scope))
-        .catch(err => console.warn('[Lúmen] SW erro:', err));
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(r => console.log('[Lúmen] SW:', r.scope))
+        .catch(e => console.warn('[Lúmen] SW erro:', e));
     });
   }
 </script>

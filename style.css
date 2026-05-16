@@ -439,7 +439,7 @@ select.input-field option{background:var(--bg2);}
   .focus-timer{font-size:5rem;}
   .garden-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));}
 }
-/* ===== SIDEBAR OVERLAY (mobile swipe) ===== */
+/* ===== SIDEBAR OVERLAY (mobile) ===== */
 .sidebar-overlay {
   display: none;
   position: fixed;
@@ -450,18 +450,43 @@ select.input-field option{background:var(--bg2);}
   -webkit-backdrop-filter: blur(2px);
   opacity: 0;
   transition: opacity 0.25s ease;
+  pointer-events: none;
 }
 .sidebar-overlay.active {
   display: block;
   opacity: 1;
+  pointer-events: all;
 }
 
+/* ===== BOTÃO FLUTUANTE ABRIR SIDEBAR ===== */
+.sidebar-fab {
+  display: none; /* só aparece quando sidebar está fechada no mobile */
+  position: fixed;
+  top: 14px;
+  left: 12px;
+  z-index: 101;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--accent3);
+  font-size: 1.1rem;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  transition: opacity 0.2s, transform 0.2s;
+}
+.sidebar-fab:active { transform: scale(0.93); }
+
 @media (max-width: 768px) {
-  /* No mobile, sidebar começa fechada por padrão */
+  /* Sidebar como gaveta no mobile */
   .sidebar {
     transform: translateX(-100%);
-    transition: transform 0.3s ease, width 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
     width: var(--sidebar-w) !important;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.5);
   }
   .sidebar:not(.collapsed) {
     transform: translateX(0);
@@ -470,15 +495,17 @@ select.input-field option{background:var(--bg2);}
     transform: translateX(-100%);
     width: var(--sidebar-w) !important;
   }
-  /* Labels e logo visíveis quando sidebar aberta no mobile */
+  /* Garante que labels aparecem quando aberta no mobile */
   .sidebar:not(.collapsed) .nav-label,
   .sidebar:not(.collapsed) .nav-section-label,
   .sidebar:not(.collapsed) .sidebar-quote,
-  .sidebar:not(.collapsed) .logo-text {
-    display: revert;
-  }
-  /* Main ocupa tela toda no mobile */
-  .main {
-    margin-left: 0 !important;
-  }
+  .sidebar:not(.collapsed) .logo-text { display: revert; }
+
+  /* Main ocupa tela toda */
+  .main { margin-left: 0 !important; }
+
+  /* Botão flutuante visível só quando sidebar fechada */
+  .sidebar.collapsed ~ * .sidebar-fab,
+  .sidebar-fab { display: flex; }
+  .sidebar:not(.collapsed) ~ * .sidebar-fab { display: none; }
 }

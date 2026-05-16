@@ -50,6 +50,8 @@
     <a href="#" class="nav-item" onclick="showPage('morning')"><span class="nav-icon">❋</span><span class="nav-label">Rotina Matinal</span></a>
     <a href="#" class="nav-item" onclick="showPage('notes')"><span class="nav-icon">✧</span><span class="nav-label">Notas</span></a>
     <a href="#" class="nav-item" onclick="showPage('settings')"><span class="nav-icon">⊕</span><span class="nav-label">Configurações</span></a>
+    <div class="nav-section-label">Social</div>
+    <a href="#" class="nav-item" id="navChat" onclick="showPage('chat')"><span class="nav-icon">◫</span><span class="nav-label">Grupos & Chat</span></a>
   </nav>
   <div class="sidebar-quote"><p>"Cuide do que floresce dentro de você."</p></div>
 </aside>
@@ -678,6 +680,65 @@
   </div>
 </div>
 
+<!-- CHAT PAGE -->
+<div class="page" id="page-chat">
+  <div class="page-banner" id="chatBanner">
+    <div class="banner-overlay"></div>
+    <div class="banner-content">
+      <div class="banner-greeting">Grupos & Chat ◫</div>
+      <div class="banner-date">Partilha metas, finanças e hábitos com quem importa.</div>
+    </div>
+  </div>
+  <div class="page-body">
+
+    <!-- LISTA DE GRUPOS -->
+    <div id="chatGroupsView">
+      <div class="page-header">
+        <div><h1 class="page-title">Os teus grupos</h1><p class="page-subtitle">Grupos privados, acesso por link.</p></div>
+        <button class="btn-primary" onclick="openModal('newGroupModal')">+ Novo grupo</button>
+      </div>
+      <div id="chatGroupsList" class="chat-groups-list"></div>
+    </div>
+
+    <!-- SALA DE CHAT (aparece quando um grupo está aberto) -->
+    <div id="chatRoomView" style="display:none;">
+      <div class="chat-room-header">
+        <button class="btn-ghost chat-back-btn" onclick="closeChatRoom()">← Voltar</button>
+        <div class="chat-room-title-wrap">
+          <span class="chat-room-name" id="chatRoomName"></span>
+          <span class="chat-room-members" id="chatRoomMembers"></span>
+        </div>
+        <button class="btn-ghost chat-share-btn" onclick="shareChatInvite()" title="Partilhar link de convite">⤴ Convidar</button>
+      </div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-loading">A carregar mensagens…</div>
+      </div>
+      <div class="chat-input-bar">
+        <input type="text" id="chatInput" class="chat-input" placeholder="Escreve uma mensagem…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage();}" maxlength="1000" />
+        <button class="chat-send-btn" onclick="sendChatMessage()">↑</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL NOVO GRUPO -->
+<div class="modal-overlay" id="newGroupModal">
+  <div class="modal">
+    <div class="modal-header"><h3>Criar grupo</h3><button class="modal-close" onclick="closeModal('newGroupModal')">✕</button></div>
+    <div class="modal-body">
+      <label class="input-label">Nome do grupo</label>
+      <input type="text" id="newGroupName" class="input-field" placeholder="Ex: Metas 2026 com a Joana…" maxlength="60" />
+      <label class="input-label" style="margin-top:0.75rem;">Descrição (opcional)</label>
+      <input type="text" id="newGroupDesc" class="input-field" placeholder="Ex: Grupo para partilhar poupanças…" maxlength="120" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('newGroupModal')">Cancelar</button>
+      <button class="btn-primary" onclick="createChatGroup()">Criar grupo</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODO FOCO NOTURNO -->
 <div class="focus-overlay" id="focusOverlay">
   <div class="focus-content">
@@ -727,14 +788,13 @@
   import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
   const firebaseConfig = {
-  apiKey: "AIzaSyDG7rci5L9G9mgkZyUiG7nkZr_IZ6uEOzk",
-  authDomain: "lumen-5ea89.firebaseapp.com",
-  projectId: "lumen-5ea89",
-  storageBucket: "lumen-5ea89.firebasestorage.app",
-  messagingSenderId: "859304554814",
-  appId: "1:859304554814:web:1eeef7fcb3d6b46e723c6f",
-  measurementId: "G-TRK8ESLTL5"
-};
+    apiKey: "AIzaSyCRj6K1X7QTZRiVD-kzmiaThOfHTDqe894",
+    authDomain: "eco1-aeaf5.firebaseapp.com",
+    projectId: "eco1-aeaf5",
+    storageBucket: "eco1-aeaf5.firebasestorage.app",
+    messagingSenderId: "375105948150",
+    appId: "1:375105948150:web:960d109f707664e9935fd7"
+  };
 
   const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
   const auth = getAuth(app);

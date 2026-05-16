@@ -7,6 +7,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Lúmen" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
 </head>
 <body>
 
@@ -708,7 +717,9 @@
 <div class="toast" id="toast"></div>
 <script type="module">
   import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getAuth, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import { getAuth, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
   const firebaseConfig = {
     apiKey: "AIzaSyCRj6K1X7QTZRiVD-kzmiaThOfHTDqe894",
     authDomain: "eco1-aeaf5.firebaseapp.com",
@@ -717,12 +728,38 @@
     messagingSenderId: "375105948150",
     appId: "1:375105948150:web:960d109f707664e9935fd7"
   };
+
   const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
   const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // Expõe globalmente para o app.js usar
+  window._firestoreDb = db;
+
+  // Quando o utilizador estiver autenticado, expõe o uid
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      window._currentUid = user.uid;
+    } else {
+      window._currentUid = null;
+    }
+  });
+
   window._doFirebaseSignOut = async () => {
     try { await signOut(auth); } catch(e) {}
   };
 </script>
 <script src="app.js"></script>
+
+<!-- PWA: Service Worker -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/service-worker.js')
+        .then(reg => console.log('[Lúmen] SW registado:', reg.scope))
+        .catch(err => console.warn('[Lúmen] SW erro:', err));
+    });
+  }
+</script>
 </body>
 </html>

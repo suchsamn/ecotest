@@ -1679,34 +1679,104 @@ function loadUserProfile() {
 
 // ===== INIT =====
 async function init() {
-  checkAuth();
+  if (!checkAuth()) return;
+
+  // Mostrar ecrã de loading enquanto aguarda dados da nuvem
+  _showAppLoading(true);
+
+  // Carregar localStorage como base inicial (dados offline/fallback)
   load();
   _applySettings();
-  restoreBanners();
-  updateAccountSelect();
-  updateCategorySelect();
-  renderAll();
-  loadUserProfile();
-  restoreSpotifyWidget();
+
+  // Aplicar tema imediatamente para evitar flash
+  if (state.settings.theme) {
+    document.documentElement.setAttribute('data-theme', state.settings.theme);
+  }
+
   document.querySelectorAll('input[type="date"]').forEach(el => { if (!el.value) el.value = today(); });
   setInterval(updateGreeting, 60000);
 
-  // Registar callback que o Firebase vai chamar assim que o auth estiver pronto
+  // Registar callback que o Firebase chama quando o auth estiver pronto
   window._onFirebaseReady = async (uid) => {
     try {
       const loaded = await loadFromFirestore();
       if (loaded) {
+        // Dados da nuvem carregados — renderizar tudo com dados actualizados
         _applySettings(); restoreBanners();
         updateAccountSelect(); updateCategorySelect();
-        renderAll(); loadUserProfile(); restoreSpotifyWidget();
-        toast('✦ Dados sincronizados');
+        loadUserProfile(); restoreSpotifyWidget();
+        renderAll();
+        updateGreeting();
+        _showAppLoading(false);
+      } else {
+        // Utilizador novo ou sem dados na nuvem — usar localStorage
+        _bootFromLocal();
       }
-    } catch(e) { console.warn('[Lúmen] sync erro:', e); }
+    } catch(e) {
+      console.warn('[Lúmen] sync erro:', e);
+      // Falha de rede — usar dados locais
+      _bootFromLocal();
+    }
   };
 
-  // Caso o Firebase já esteja pronto antes do DOMContentLoaded (improvável mas possível)
+  // Timeout de segurança: se o Firebase demorar mais de 6s, usa dados locais
+  setTimeout(() => {
+    const overlay = document.getElementById('appLoadingOverlay');
+    if (overlay && overlay.style.display !== 'none') {
+      console.warn('[Lúmen] Firebase timeout — a usar dados locais');
+      _bootFromLocal();
+    }
+  }, 6000);
+
+  // Caso o Firebase já esteja pronto (improvável mas possível)
   if (window._currentUid && window._firestoreDb) {
     window._onFirebaseReady(window._currentUid);
+  }
+}
+
+function _bootFromLocal() {
+  restoreBanners();
+  updateAccountSelect(); updateCategorySelect();
+  loadUserProfile(); restoreSpotifyWidget();
+  renderAll();
+  updateGreeting();
+  _showAppLoading(false);
+}
+
+function _showAppLoading(show) {
+  let overlay = document.getElementById('appLoadingOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'appLoadingOverlay';
+    overlay.style.cssText = `
+      position:fixed;inset:0;z-index:9999;
+      background:var(--bg);
+      display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      gap:1.2rem;
+      transition:opacity 0.4s ease;
+    `;
+    overlay.innerHTML = `
+      <div style="position:relative;width:56px;height:56px;">
+        <div style="position:absolute;inset:0;border-radius:50%;border:1.5px solid transparent;border-top-color:rgba(184,169,232,0.8);animation:spinRing 1.6s linear infinite;"></div>
+        <div style="position:absolute;inset:8px;border-radius:50%;border:1px solid transparent;border-bottom-color:rgba(184,169,232,0.4);animation:spinRing 2.4s linear infinite reverse;"></div>
+        <svg style="position:absolute;inset:0;margin:auto;width:22px;height:22px;display:block;" viewBox="0 0 22 22" fill="none">
+          <circle cx="11" cy="11" r="4.5" fill="var(--accent3)" opacity="0.92"/>
+          <circle cx="11" cy="11" r="8" stroke="var(--accent3)" stroke-width="1" fill="none" opacity="0.35"/>
+        </svg>
+      </div>
+      <span style="font-family:'Cormorant Garamond',serif;font-size:1.4rem;letter-spacing:0.2em;color:var(--accent3);">Lúmen</span>
+      <span style="font-size:0.72rem;color:var(--text3);letter-spacing:0.1em;">a sincronizar...</span>
+      <style>@keyframes spinRing{to{transform:rotate(360deg)}}</style>
+    `;
+    document.body.appendChild(overlay);
+  }
+  if (show) {
+    overlay.style.display = 'flex';
+    overlay.style.opacity = '1';
+  } else {
+    overlay.style.opacity = '0';
+    setTimeout(() => { overlay.style.display = 'none'; }, 420);
   }
 }
 

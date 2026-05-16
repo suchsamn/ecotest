@@ -730,13 +730,12 @@
     // Se já estiver logado, mostra ecrã de carregamento e redireciona
     // (mas não se acabou de fazer logout)
     onAuthStateChanged(auth, user => {
-      if (user && !sessionStorage.getItem('lumen_logging_out')) {
+      if (user && !localStorage.getItem('lumen_logged_out')) {
         // Já está autenticado — mostrar loading imediatamente
         const screen = document.getElementById('loadingScreen');
         const container = document.getElementById('authMainContainer');
         screen.style.display = 'flex';
         if (container) container.style.display = 'none';
-        // Guardar dados e redirecionar após animação
         localStorage.setItem('lumen_user', JSON.stringify({
           uid: user.uid,
           name: user.displayName || '',
@@ -749,12 +748,10 @@
           setTimeout(() => { window.location.href = 'index.html'; }, 650);
         }, 1800);
       } else if (!user) {
-        // Logout completo — limpar flag e mostrar formulário normalmente
         sessionStorage.removeItem('lumen_logging_out');
       }
     });
 
-    // Expõe signOut para o app.js poder chamar via postMessage ou redirect
     window._firebaseSignOut = () => signOut(auth);
   }
 
@@ -779,13 +776,13 @@
     if (el) el.classList.toggle('show', show);
   }
   function goToApp(user) {
+    localStorage.removeItem('lumen_logged_out');
     localStorage.setItem('lumen_user', JSON.stringify({
       uid: user.uid,
       name: user.displayName || '',
       email: user.email,
       photo: user.photoURL || '',
     }));
-    // Também manter eco_user por compatibilidade se existir
     localStorage.setItem('eco_user', localStorage.getItem('lumen_user'));
     showLoadingAndRedirect();
   }

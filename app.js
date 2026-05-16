@@ -182,6 +182,18 @@ function switchHabitsTab(tab, btn) {
 
 // ===== NAVIGATION =====
 function showPage(id) {
+  // Cancelar listeners de chat ao sair da aba
+  if (id !== 'chat') {
+    if (_chatGroupsUnsubscribe) { _chatGroupsUnsubscribe(); _chatGroupsUnsubscribe = null; }
+    if (_chatUnsubscribe) { _chatUnsubscribe(); _chatUnsubscribe = null; }
+    if (_currentGroupId) {
+      _currentGroupId = null;
+      const rv = document.getElementById('chatRoomView');
+      const gv = document.getElementById('chatGroupsView');
+      if (rv) rv.style.display = 'none';
+      if (gv) gv.style.display = '';
+    }
+  }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
@@ -1670,32 +1682,52 @@ function _applySettings() {
 
 // ===== CHAT / GRUPOS PRIVADOS =====
 
-let _chatUnsubscribe = null;   // listener ativo de mensagens
-let _currentGroupId = null;    // grupo aberto
+let _chatUnsubscribe = null;      // listener de mensagens ativo
+let _chatGroupsUnsubscribe = null; // listener de grupos ativo
+let _currentGroupId = null;
+let _createGroupBusy = false;
 
-// --- Helpers Firestore (lazy import) ---
+// --- Helpers Firestore (lazy import, cached) ---
+let _fsCache = null;
 async function _fs() {
-  const { doc, collection, addDoc, setDoc, getDoc, updateDoc, onSnapshot, query, orderBy, limit, serverTimestamp, arrayUnion }
-    = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-  return { doc, collection, addDoc, setDoc, getDoc, updateDoc, onSnapshot, query, orderBy, limit, serverTimestamp, arrayUnion };
+  if (_fsCache) return _fsCache;
+  _fsCache = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  return _fsCache;
+}
+
+// --- Esperar pelo Firebase estar pronto (resolve race condition) ---
+function _waitForFirebase(maxMs = 6000) {
+  return new Promise((resolve, reject) => {
+    if (window._firestoreDb && window._currentUid) { resolve(); return; }
+    const start = Date.now();
+    const check = setInterval(() => {
+      if (window._firestoreDb && window._currentUid) { clearInterval(check); resolve(); }
+      else if (Date.now() - start > maxMs) { clearInterval(check); reject(new Error('Firebase timeout')); }
+    }, 150);
+  });
 }
 
 // --- Criar grupo ---
 async function createChatGroup() {
+  if (_createGroupBusy) return;
   const name = document.getElementById('newGroupName').value.trim();
   if (!name) { toast('Dá um nome ao grupo!'); return; }
-  const desc = document.getElementById('newGroupDesc').value.trim();
-  const db = window._firestoreDb;
-  const uid_user = window._currentUid;
-  if (!db || !uid_user) { toast('Sem ligação. Tenta novamente.'); return; }
 
+  // Desativar botão imediatamente para evitar cliques múltiplos
+  _createGroupBusy = true;
+  const btn = document.querySelector('#newGroupModal .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'A criar…'; }
+
+  const desc = document.getElementById('newGroupDesc').value.trim();
   try {
+    await _waitForFirebase();
+    const db = window._firestoreDb;
+    const uid_user = window._currentUid;
     const { collection, addDoc, serverTimestamp } = await _fs();
     const userRaw = localStorage.getItem('lumen_user') || localStorage.getItem('eco_user');
     const user = userRaw ? JSON.parse(userRaw) : {};
     const groupRef = await addDoc(collection(db, 'groups'), {
-      name,
-      desc,
+      name, desc,
       createdBy: uid_user,
       createdByName: user.name || 'Utilizador',
       createdAt: serverTimestamp(),
@@ -1707,11 +1739,13 @@ async function createChatGroup() {
     document.getElementById('newGroupName').value = '';
     document.getElementById('newGroupDesc').value = '';
     toast('Grupo criado! ◫');
-    renderChatGroups();
     openChatRoom(groupRef.id, name);
   } catch(e) {
     console.error('[Chat] createGroup erro:', e);
     toast('Erro ao criar grupo. Verifica as regras do Firestore.');
+  } finally {
+    _createGroupBusy = false;
+    if (btn) { btn.disabled = false; btn.textContent = 'Criar grupo'; }
   }
 }
 
@@ -1736,17 +1770,16 @@ async function _checkChatJoinParam() {
 }
 
 async function _joinGroup(groupId) {
-  const db = window._firestoreDb;
-  const uid_user = window._currentUid;
-  if (!db || !uid_user) return;
   try {
+    await _waitForFirebase();
+    const db = window._firestoreDb;
+    const uid_user = window._currentUid;
     const { doc, getDoc, updateDoc, arrayUnion } = await _fs();
     const groupRef = doc(db, 'groups', groupId);
     const snap = await getDoc(groupRef);
     if (!snap.exists()) { toast('Grupo não encontrado.'); return; }
     const data = snap.data();
     if (data.members && data.members.includes(uid_user)) {
-      // Já é membro — abrir direto
       showPage('chat');
       openChatRoom(groupId, data.name);
       return;
@@ -1760,7 +1793,6 @@ async function _joinGroup(groupId) {
     });
     toast(`Entraste no grupo "${data.name}" ◫`);
     showPage('chat');
-    renderChatGroups();
     openChatRoom(groupId, data.name);
   } catch(e) {
     console.error('[Chat] joinGroup erro:', e);
@@ -1768,23 +1800,23 @@ async function _joinGroup(groupId) {
   }
 }
 
-// --- Listar grupos do utilizador ---
+// --- Listar grupos do utilizador (listener único e persistente) ---
 async function renderChatGroups() {
   const list = document.getElementById('chatGroupsList');
   if (!list) return;
-  const db = window._firestoreDb;
-  const uid_user = window._currentUid;
-  if (!db || !uid_user) {
-    list.innerHTML = '<div class="empty-state">Liga-te para ver os teus grupos ✦</div>';
-    return;
-  }
+
+  // Cancelar listener anterior se existir
+  if (_chatGroupsUnsubscribe) { _chatGroupsUnsubscribe(); _chatGroupsUnsubscribe = null; }
+
   list.innerHTML = '<div class="chat-loading">A carregar…</div>';
+
   try {
-    const { collection, query, onSnapshot } = await _fs();
-    // Usamos where diretamente via import para o query com filter
-    const { where } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await _waitForFirebase();
+    const db = window._firestoreDb;
+    const uid_user = window._currentUid;
+    const { collection, query, onSnapshot, where } = await _fs();
     const q = query(collection(db, 'groups'), where('members', 'array-contains', uid_user));
-    onSnapshot(q, snap => {
+    _chatGroupsUnsubscribe = onSnapshot(q, snap => {
       if (snap.empty) {
         list.innerHTML = '<div class="empty-state">Nenhum grupo ainda.<br>Cria um ou entra com um link de convite ✦</div>';
         return;
@@ -1793,23 +1825,29 @@ async function renderChatGroups() {
         const g = d.data();
         const count = g.members ? g.members.length : 1;
         const isOwner = g.createdBy === uid_user;
+        const safeName = g.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
         return `
-        <div class="chat-group-card" onclick="openChatRoom('${d.id}','${g.name.replace(/'/g,"\\'")}')">
+        <div class="chat-group-card" onclick="openChatRoom('${d.id}','${safeName}')">
           <div class="chat-group-icon">◫</div>
           <div class="chat-group-info">
             <div class="chat-group-name">${g.name}</div>
             <div class="chat-group-meta">${count} membro${count !== 1 ? 's' : ''}${g.desc ? ' · ' + g.desc : ''}</div>
           </div>
           <div class="chat-group-actions">
-            <button class="btn-ghost chat-invite-mini" onclick="event.stopPropagation();shareChatInviteById('${d.id}','${g.name.replace(/'/g,"\\'")}')">⤴</button>
-            ${isOwner ? `<button class="btn-ghost chat-delete-mini" onclick="event.stopPropagation();deleteChatGroup('${d.id}')">✕</button>` : `<button class="btn-ghost chat-delete-mini" onclick="event.stopPropagation();leaveChatGroup('${d.id}')">Sair</button>`}
+            <button class="btn-ghost chat-invite-mini" onclick="event.stopPropagation();shareChatInviteById('${d.id}','${safeName}')">⤴</button>
+            ${isOwner
+              ? `<button class="btn-ghost chat-delete-mini" onclick="event.stopPropagation();deleteChatGroup('${d.id}')">✕</button>`
+              : `<button class="btn-ghost chat-delete-mini" onclick="event.stopPropagation();leaveChatGroup('${d.id}')">Sair</button>`}
           </div>
         </div>`;
       }).join('');
+    }, err => {
+      console.error('[Chat] groups listener erro:', err);
+      list.innerHTML = '<div class="empty-state">Erro ao carregar grupos. Verifica as regras do Firestore.</div>';
     });
   } catch(e) {
     console.error('[Chat] renderGroups erro:', e);
-    list.innerHTML = '<div class="empty-state">Erro ao carregar grupos. Verifica as regras do Firestore.</div>';
+    list.innerHTML = '<div class="empty-state">Erro de ligação. Tenta novamente.</div>';
   }
 }
 
@@ -1844,6 +1882,8 @@ function closeChatRoom() {
   _currentGroupId = null;
   document.getElementById('chatGroupsView').style.display = '';
   document.getElementById('chatRoomView').style.display = 'none';
+  // Re-ligar o listener de grupos ao voltar
+  renderChatGroups();
 }
 
 // --- Ouvir mensagens em tempo real ---

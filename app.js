@@ -1553,9 +1553,17 @@ function checkAuth() {
 
 function logout() {
   if (confirm('Tem a certeza que quer terminar a sessão?')) {
+    // Flag para o login.html não redirecionar automaticamente
+    sessionStorage.setItem('lumen_logging_out', '1');
     localStorage.removeItem('lumen_user');
     localStorage.removeItem('eco_user');
-    window.location.href = 'login.html';
+    // Fazer signOut do Firebase (se disponível) e só depois redirecionar
+    const doSignOut = window._doFirebaseSignOut;
+    if (typeof doSignOut === 'function') {
+      doSignOut().finally(() => { window.location.href = 'login.html'; });
+    } else {
+      window.location.href = 'login.html';
+    }
   }
 }
 

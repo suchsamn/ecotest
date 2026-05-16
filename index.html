@@ -706,6 +706,23 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<script type="module">
+  import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  const firebaseConfig = {
+    apiKey: "AIzaSyCRj6K1X7QTZRiVD-kzmiaThOfHTDqe894",
+    authDomain: "eco1-aeaf5.firebaseapp.com",
+    projectId: "eco1-aeaf5",
+    storageBucket: "eco1-aeaf5.firebasestorage.app",
+    messagingSenderId: "375105948150",
+    appId: "1:375105948150:web:960d109f707664e9935fd7"
+  };
+  const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  window._doFirebaseSignOut = async () => {
+    try { await signOut(auth); } catch(e) {}
+  };
+</script>
 <script src="app.js"></script>
 </body>
 </html>

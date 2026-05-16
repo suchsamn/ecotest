@@ -695,7 +695,10 @@
     <div id="chatGroupsView">
       <div class="page-header">
         <div><h1 class="page-title">Os teus grupos</h1><p class="page-subtitle">Grupos privados, acesso por link.</p></div>
-        <button class="btn-primary" onclick="openModal('newGroupModal')">+ Novo grupo</button>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <button class="btn-ghost" onclick="openModal('joinGroupModal')">⤵ Entrar com link</button>
+          <button class="btn-primary" onclick="openModal('newGroupModal')">+ Novo grupo</button>
+        </div>
       </div>
       <div id="chatGroupsList" class="chat-groups-list"></div>
     </div>
@@ -719,6 +722,21 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- MODAL ENTRAR COM LINK -->
+<div class="modal-overlay" id="joinGroupModal">
+  <div class="modal">
+    <div class="modal-header"><h3>Entrar num grupo</h3><button class="modal-close" onclick="closeModal('joinGroupModal')">✕</button></div>
+    <div class="modal-body">
+      <label class="input-label">Cola o link de convite aqui</label>
+      <input type="url" id="joinGroupLink" class="input-field" placeholder="https://…?join=…" inputmode="url" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('joinGroupModal')">Cancelar</button>
+      <button class="btn-primary" onclick="joinGroupByLink()">Entrar</button>
+    </div>
   </div>
 </div>
 
@@ -801,7 +819,12 @@
   const db = getFirestore(app);
 
   window._firestoreDb = db;
-  onAuthStateChanged(auth, user => { window._currentUid = user ? user.uid : null; });
+  onAuthStateChanged(auth, async user => {
+    window._currentUid = user ? user.uid : null;
+    if (user && typeof window._onFirebaseReady === 'function') {
+      window._onFirebaseReady(user.uid);
+    }
+  });
   window._doFirebaseSignOut = async () => { try { await signOut(auth); } catch(e) {} };
 </script>
 <script src="app.js"></script>

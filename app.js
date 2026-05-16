@@ -1652,22 +1652,29 @@ async function init() {
   document.querySelectorAll('input[type="date"]').forEach(el => { if (!el.value) el.value = today(); });
   setInterval(updateGreeting, 60000);
 
-  let attempts = 0;
-  const waitAndSync = async () => {
-    if (window._currentUid && window._firestoreDb) {
+  // Registar callback que o Firebase vai chamar assim que o auth estiver pronto
+  window._onFirebaseReady = async (uid) => {
+    try {
       const loaded = await loadFromFirestore();
       if (loaded) {
         _applySettings(); restoreBanners();
         updateAccountSelect(); updateCategorySelect();
         renderAll(); loadUserProfile(); restoreSpotifyWidget();
         toast('✦ Dados sincronizados');
-        // Verificar se há um join pendente (redirecionamento de convite)
-        const pendingJoin = sessionStorage.getItem('lumen_pending_join');
-        if (pendingJoin) { sessionStorage.removeItem('lumen_pending_join'); _joinGroup(pendingJoin); }
       }
-    } else if (attempts < 20) { attempts++; setTimeout(waitAndSync, 300); }
+      // Verificar join pendente de convite de grupo
+      const pendingJoin = sessionStorage.getItem('lumen_pending_join');
+      if (pendingJoin) { sessionStorage.removeItem('lumen_pending_join'); _joinGroup(pendingJoin); }
+      // Se a aba de chat já estiver ativa, carregar grupos
+      const chatPage = document.getElementById('page-chat');
+      if (chatPage && chatPage.classList.contains('active')) renderChatGroups();
+    } catch(e) { console.warn('[Lúmen] sync erro:', e); }
   };
-  waitAndSync();
+
+  // Caso o Firebase já esteja pronto antes do DOMContentLoaded (improvável mas possível)
+  if (window._currentUid && window._firestoreDb) {
+    window._onFirebaseReady(window._currentUid);
+  }
 }
 
 function _applySettings() {
@@ -1712,13 +1719,15 @@ async function createChatGroup() {
   if (_createGroupBusy) return;
   const name = document.getElementById('newGroupName').value.trim();
   if (!name) { toast('Dá um nome ao grupo!'); return; }
-
-  // Desativar botão imediatamente para evitar cliques múltiplos
-  _createGroupBusy = true;
-  const btn = document.querySelector('#newGroupModal .btn-primary');
-  if (btn) { btn.disabled = true; btn.textContent = 'A criar…'; }
-
   const desc = document.getElementById('newGroupDesc').value.trim();
+
+  // Fechar modal e bloquear imediatamente — sem esperar pelo async
+  _createGroupBusy = true;
+  closeModal('newGroupModal');
+  document.getElementById('newGroupName').value = '';
+  document.getElementById('newGroupDesc').value = '';
+  toast('A criar grupo… ◫');
+
   try {
     await _waitForFirebase();
     const db = window._firestoreDb;
@@ -1735,9 +1744,6 @@ async function createChatGroup() {
       memberNames: { [uid_user]: user.name || 'Utilizador' },
       memberPhotos: { [uid_user]: user.photo || '' },
     });
-    closeModal('newGroupModal');
-    document.getElementById('newGroupName').value = '';
-    document.getElementById('newGroupDesc').value = '';
     toast('Grupo criado! ◫');
     openChatRoom(groupRef.id, name);
   } catch(e) {
@@ -1745,8 +1751,26 @@ async function createChatGroup() {
     toast('Erro ao criar grupo. Verifica as regras do Firestore.');
   } finally {
     _createGroupBusy = false;
-    if (btn) { btn.disabled = false; btn.textContent = 'Criar grupo'; }
   }
+}
+
+// --- Entrar via link colado no modal ---
+async function joinGroupByLink() {
+  const raw = document.getElementById('joinGroupLink').value.trim();
+  if (!raw) { toast('Cola o link de convite primeiro!'); return; }
+  let groupId = null;
+  try {
+    const url = new URL(raw);
+    groupId = url.searchParams.get('join');
+  } catch(e) {
+    // Pode ser só o ID diretamente
+    groupId = raw.replace(/\s/g, '');
+  }
+  if (!groupId) { toast('Link inválido. Copia o link completo.'); return; }
+  closeModal('joinGroupModal');
+  document.getElementById('joinGroupLink').value = '';
+  toast('A entrar no grupo…');
+  await _joinGroup(groupId);
 }
 
 // --- Entrar num grupo via URL (?join=groupId) ---

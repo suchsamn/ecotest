@@ -78,20 +78,10 @@ async function _syncToFirestore() {
   if (!db || !uid_user) return;
   try {
     const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    // Excluir imagens base64 do payload do Firestore (podem exceder 1MB)
-    // Banners, profilePic e greetingMedia ficam apenas no localStorage
-    const settingsForCloud = Object.fromEntries(
-      Object.entries(state.settings).filter(([k]) =>
-        !k.startsWith('banner_') && k !== 'profilePic' && k !== 'greetingMedia'
-      )
-    );
-    // Notas: excluir imagens base64 inline
+    // Imagens de notas inline (base64) ainda são excluídas — ficam só no localStorage
+    // Tudo o resto (banners, profilePic, greetingMedia) já são URLs do Storage — seguro enviar
     const notesForCloud = (state.notes || []).map(n => ({ ...n, images: [] }));
-    const stateForCloud = {
-      ...state,
-      settings: settingsForCloud,
-      notes: notesForCloud,
-    };
+    const stateForCloud = { ...state, notes: notesForCloud };
     await setDoc(doc(db, 'users', uid_user), { data: JSON.stringify(stateForCloud) });
   } catch (e) { console.warn('[Lúmen] Firestore save erro:', e); }
 }
@@ -170,7 +160,34 @@ function toast(msg) {
 }
 function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 
-// ===== BANNER MENU =====
+// ===== FIREBASE STORAGE UPLOAD =====
+async function _uploadToStorage(path, dataUrl) {
+  const storage = window._firebaseStorage;
+  const uid_user = window._currentUid;
+  if (!storage || !uid_user) return null;
+  try {
+    const { ref, uploadString, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js');
+    const storageRef = ref(storage, `users/${uid_user}/${path}`);
+    // dataUrl pode ser base64 (imagem) ou data URL
+    const snapshot = await uploadString(storageRef, dataUrl, 'data_url');
+    return await getDownloadURL(snapshot.ref);
+  } catch (e) {
+    console.warn('[Lúmen] Storage upload erro:', e);
+    return null;
+  }
+}
+
+async function _deleteFromStorage(path) {
+  const storage = window._firebaseStorage;
+  const uid_user = window._currentUid;
+  if (!storage || !uid_user) return;
+  try {
+    const { ref, deleteObject } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js');
+    await deleteObject(ref(storage, `users/${uid_user}/${path}`));
+  } catch (e) { /* ficheiro pode não existir */ }
+}
+
+
 function toggleBannerMenu(bannerId, btn) {
   const dropdown = document.getElementById('bmenu-' + bannerId);
   if (!dropdown) return;
@@ -271,11 +288,18 @@ function setTheme(theme, btn) {
 function setProfilePic(input) {
   const file = input.files[0]; if (!file) return;
   const r = new FileReader();
-  r.onload = e => {
-    state.settings.profilePic = e.target.result;
+  r.onload = async e => {
+    const dataUrl = e.target.result;
+    state.settings.profilePic = dataUrl;
     const pic = document.getElementById('profilePic');
-    pic.src = e.target.result; pic.style.display = 'block';
+    if (pic) { pic.src = dataUrl; pic.style.display = 'block'; }
     save();
+    const url = await _uploadToStorage('profilePic.jpg', dataUrl);
+    if (url) {
+      state.settings.profilePic = url;
+      if (pic) pic.src = url;
+      save();
+    }
   };
   r.readAsDataURL(file);
 }
@@ -311,14 +335,26 @@ function clearAll() {
 // ===== GREETING MEDIA (foto/gif no saudação) =====
 function setGreetingMedia(input) {
   const file = input.files[0]; if (!file) return;
+  const isGif = file.type === 'image/gif';
   const r = new FileReader();
-  r.onload = e => {
-    state.settings.greetingMedia = e.target.result;
+  r.onload = async e => {
+    const dataUrl = e.target.result;
+    state.settings.greetingMedia = dataUrl;
     save();
     updateGreeting();
-    toast('Imagem de saudação definida!');
+    toast('A carregar imagem de saudação... ⏳');
     const removeBtn = document.getElementById('removeGreetingBtn');
     if (removeBtn) removeBtn.style.display = 'inline-flex';
+    const ext = isGif ? 'greetingMedia.gif' : 'greetingMedia.jpg';
+    const url = await _uploadToStorage(ext, dataUrl);
+    if (url) {
+      state.settings.greetingMedia = url;
+      save();
+      updateGreeting();
+      toast('Imagem de saudação sincronizada ✦');
+    } else {
+      toast('Imagem aplicada (apenas local — sem ligação à nuvem)');
+    }
   };
   r.readAsDataURL(file);
   input.value = '';
@@ -337,7 +373,7 @@ function openImagePositioner(bannerId, input) {
   const file = input.files[0]; if (!file) return;
   const isGif = file.type === 'image/gif';
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     positioner.bannerId = bannerId;
     positioner.imgSrc = e.target.result;
     positioner.isGif = isGif;
@@ -346,16 +382,26 @@ function openImagePositioner(bannerId, input) {
     positioner.zoom = 100;
 
     if (isGif) {
-      // Para GIFs: aplicar diretamente (canvas congela animação)
+      // GIFs: aplicar visualmente de imediato com base64
       const banner = document.getElementById(bannerId);
       banner.style.backgroundImage = `url(${e.target.result})`;
       banner.style.backgroundSize = 'cover';
       banner.style.backgroundPosition = 'center';
-      // Salvar o src original do GIF (não renderizado em canvas)
-      state.settings['banner_' + bannerId] = e.target.result;
-      state.settings['bannerIsGif_' + bannerId] = true;
-      save();
-      toast('GIF aplicado!');
+      toast('A carregar GIF para a nuvem... ⏳');
+      // Upload para o Storage e guardar URL
+      const url = await _uploadToStorage(`banners/${bannerId}.gif`, e.target.result);
+      if (url) {
+        state.settings['banner_' + bannerId] = url;
+        state.settings['bannerIsGif_' + bannerId] = true;
+        save();
+        toast('GIF sincronizado com a nuvem ✦');
+      } else {
+        // Fallback: guardar base64 localmente apenas
+        state.settings['banner_' + bannerId] = e.target.result;
+        state.settings['bannerIsGif_' + bannerId] = true;
+        save();
+        toast('GIF aplicado (apenas local — sem ligação à nuvem)');
+      }
     } else {
       const img = document.getElementById('positionerImg');
       img.src = e.target.result;
@@ -400,7 +446,7 @@ function updatePositionerZoom(val) {
   applyPositionerTransform();
 }
 
-function applyBannerPosition() {
+async function applyBannerPosition() {
   const viewport = document.getElementById('positionerViewport');
   const img = document.getElementById('positionerImg');
   const vw = viewport.clientWidth;
@@ -422,14 +468,25 @@ function applyBannerPosition() {
   banner.style.backgroundSize = 'cover';
   banner.style.backgroundPosition = 'center';
 
-  state.settings['banner_' + positioner.bannerId] = dataUrl;
-  state.settings['bannerIsGif_' + positioner.bannerId] = false;
-  save();
   closeModal('imagePositionModal');
-  toast('Imagem aplicada!');
+  toast('A carregar imagem para a nuvem... ⏳');
+
+  const ext = positioner.bannerId + '.jpg';
+  const url = await _uploadToStorage(`banners/${ext}`, dataUrl);
+  if (url) {
+    state.settings['banner_' + positioner.bannerId] = url;
+    state.settings['bannerIsGif_' + positioner.bannerId] = false;
+    save();
+    toast('Imagem sincronizada com a nuvem ✦');
+  } else {
+    // Fallback local
+    state.settings['banner_' + positioner.bannerId] = dataUrl;
+    state.settings['bannerIsGif_' + positioner.bannerId] = false;
+    save();
+    toast('Imagem aplicada (apenas local — sem ligação à nuvem)');
+  }
 }
 
-// Remover banner/imagem de um menu
 function removeBanner(bannerId) {
   const banner = document.getElementById(bannerId);
   if (banner) {
@@ -437,6 +494,8 @@ function removeBanner(bannerId) {
     banner.style.backgroundSize = '';
     banner.style.backgroundPosition = '';
   }
+  const isGif = state.settings['bannerIsGif_' + bannerId];
+  _deleteFromStorage(`banners/${bannerId}${isGif ? '.gif' : '.jpg'}`);
   delete state.settings['banner_' + bannerId];
   delete state.settings['bannerIsGif_' + bannerId];
   save();

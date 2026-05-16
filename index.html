@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-PT">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Lúmen — Seu Espaço Pessoal</title>
+  <title>Lúmen — O Teu Espaço Pessoal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
@@ -41,7 +41,7 @@
   <nav class="sidebar-nav">
     <div class="nav-section-label">Principal</div>
     <a href="#" class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">⊞</span><span class="nav-label">Visão Geral</span></a>
-    <a href="#" class="nav-item" onclick="showPage('planner')"><span class="nav-icon">✦</span><span class="nav-label">Planejador</span></a>
+    <a href="#" class="nav-item" onclick="showPage('planner')"><span class="nav-icon">✦</span><span class="nav-label">Planeador</span></a>
     <a href="#" class="nav-item" onclick="showPage('finance')"><span class="nav-icon">◈</span><span class="nav-label">Finanças</span></a>
     <a href="#" class="nav-item" onclick="showPage('goals')"><span class="nav-icon">◎</span><span class="nav-label">Metas</span></a>
     <a href="#" class="nav-item" onclick="showPage('calendar')"><span class="nav-icon">⬡</span><span class="nav-label">Calendário</span></a>
@@ -115,7 +115,7 @@
       </div>
       <div class="section-card">
         <div class="section-header"><h2 class="section-title">Última Nota</h2><button class="btn-ghost" onclick="showPage('notes')">Ver notas →</button></div>
-        <div id="lastNote" class="journal-preview-text">Nenhuma nota ainda. Comece a registar seus pensamentos ✦</div>
+        <div id="lastNote" class="journal-preview-text">Nenhuma nota ainda. Comece a registar os teus pensamentos ✦</div>
       </div>
 
       <!-- MODO FOCO + SPOTIFY ROW -->
@@ -156,7 +156,7 @@
   <div class="page" id="page-planner">
     <div class="page-banner" id="plannerBanner">
       <div class="banner-overlay"></div>
-      <div class="banner-content"><div class="banner-greeting">Planejador ✦</div></div>
+      <div class="banner-content"><div class="banner-greeting">Planeador ✦</div></div>
       <div class="banner-controls">
         <div class="banner-menu-wrap">
           <button class="banner-menu-btn" onclick="toggleBannerMenu('plannerBanner',this)" title="Editar banner">⊹</button>
@@ -168,7 +168,7 @@
       </div>
     </div>
     <div class="page-body">
-      <div class="page-header"><h1 class="page-title">Planejador</h1><button class="btn-primary" onclick="openModal('taskModal')">+ Nova Tarefa</button></div>
+      <div class="page-header"><h1 class="page-title">Planeador</h1><button class="btn-primary" onclick="openModal('taskModal')">+ Nova Tarefa</button></div>
       <div class="tab-bar">
         <button class="tab active" onclick="filterTasks('all', this)">Todas</button>
         <button class="tab" onclick="filterTasks('today', this)">Hoje</button>
@@ -421,7 +421,7 @@
       <div class="section-card">
         <h2 class="section-title" style="margin-bottom:1rem;">Perfil</h2>
         <div class="settings-row">
-          <label>Seu Nome</label>
+          <label>O Teu Nome</label>
           <input type="text" id="userName" class="input-field" placeholder="Como quer ser chamado?" oninput="saveSetting('userName', this.value); updateGreeting()"/>
         </div>
         <div class="settings-row">
@@ -493,7 +493,7 @@
       <textarea id="taskNotes" class="input-field" rows="3" placeholder="Notas (opcional)..."></textarea>
       <p style="font-size:0.75rem;color:var(--text3);margin-top:-0.4rem;">💡 Se adicionar uma data, a tarefa aparece automaticamente no Calendário.</p>
     </div>
-    <div class="modal-footer"><button class="btn-ghost" onclick="closeModal('taskModal')">Cancelar</button><button class="btn-primary" onclick="addTask()">Salvar Tarefa</button></div>
+    <div class="modal-footer"><button class="btn-ghost" onclick="closeModal('taskModal')">Cancelar</button><button class="btn-primary" onclick="addTask()">Guardar Tarefa</button></div>
   </div>
 </div>
 
@@ -513,7 +513,7 @@
       <select id="transAccount" class="input-field"><option value="Dinheiro">Dinheiro</option></select>
       <input type="date" id="transDate" class="input-field" />
     </div>
-    <div class="modal-footer"><button class="btn-ghost" onclick="closeModal('transactionModal')">Cancelar</button><button class="btn-primary" onclick="addTransaction()">Salvar</button></div>
+    <div class="modal-footer"><button class="btn-ghost" onclick="closeModal('transactionModal')">Cancelar</button><button class="btn-primary" onclick="addTransaction()">Guardar</button></div>
   </div>
 </div>
 
@@ -525,7 +525,7 @@
       <input type="text" id="accountName" class="input-field" placeholder="Nome da conta (ex: Banco X)..." />
       <input type="number" id="accountBalance" class="input-field" placeholder="Saldo inicial em € ..." min="0" step="0.01" />
     </div>
-    <div class="modal-footer"><button class="btn-ghost" onclick="closeModal('accountModal')">Cancelar</button><button class="btn-primary" onclick="addAccount()">Salvar</button></div>
+    <div class="modal-footer"><button class="btn-ghost" onclick="closeModal('accountModal')">Cancelar</button><button class="btn-primary" onclick="addAccount()">Guardar</button></div>
   </div>
 </div>
 
@@ -559,7 +559,7 @@
         <option>Financeiro</option><option>Saúde</option><option>Carreira</option><option>Pessoal</option><option>Viagem</option><option>Estudo</option>
       </select>
     </div>
-    <div class="modal-footer"><button class="btn-ghost" onclick="closeModal('goalModal')">Cancelar</button><button class="btn-primary" onclick="addGoal()">Salvar</button></div>
+    <div class="modal-footer"><button class="btn-ghost" onclick="closeModal('goalModal')">Cancelar</button><button class="btn-primary" onclick="addGoal()">Guardar</button></div>
   </div>
 </div>
 
@@ -578,7 +578,7 @@
         <button class="mood-btn" onclick="setMood('🤩', this)">🤩</button>
         <button class="mood-btn" onclick="setMood('😴', this)">😴</button>
       </div>
-      <textarea id="noteContent" class="input-field journal-textarea" rows="7" placeholder="Escreva seus pensamentos aqui..."></textarea>
+      <textarea id="noteContent" class="input-field journal-textarea" rows="7" placeholder="Escreva os teus pensamentos aqui..."></textarea>
       <div class="note-image-upload-area">
         <label class="note-image-upload-btn">
           <input type="file" accept="image/*,image/gif" multiple onchange="handleNoteImages(this)" hidden />
@@ -587,7 +587,7 @@
         <div id="noteImagesPreview" class="note-images-preview"></div>
       </div>
     </div>
-    <div class="modal-footer"><button class="btn-ghost" onclick="closeModal('noteModal')">Cancelar</button><button class="btn-primary" onclick="addNote()">Salvar Nota</button></div>
+    <div class="modal-footer"><button class="btn-ghost" onclick="closeModal('noteModal')">Cancelar</button><button class="btn-primary" onclick="addNote()">Guardar Nota</button></div>
   </div>
 </div>
 
@@ -601,7 +601,7 @@
       <select id="habitFreq" class="input-field"><option value="Diário">Diário</option><option value="Semanal">Semanal</option></select>
       <input type="number" id="habitGoal" class="input-field" placeholder="Meta diária (vezes/dia)..." min="1" value="1" />
     </div>
-    <div class="modal-footer"><button class="btn-ghost" onclick="closeModal('habitModal')">Cancelar</button><button class="btn-primary" onclick="addHabit()">Salvar</button></div>
+    <div class="modal-footer"><button class="btn-ghost" onclick="closeModal('habitModal')">Cancelar</button><button class="btn-primary" onclick="addHabit()">Guardar</button></div>
   </div>
 </div>
 

@@ -58,7 +58,10 @@ let positioner = {
 };
 
 // ===== UTILS =====
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function uid() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
 
 // ===== FIRESTORE SYNC =====
 let _saveDebounceTimer = null;
@@ -75,7 +78,21 @@ async function _syncToFirestore() {
   if (!db || !uid_user) return;
   try {
     const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    await setDoc(doc(db, 'users', uid_user), { data: JSON.stringify(state) });
+    // Excluir imagens base64 do payload do Firestore (podem exceder 1MB)
+    // Banners, profilePic e greetingMedia ficam apenas no localStorage
+    const settingsForCloud = Object.fromEntries(
+      Object.entries(state.settings).filter(([k]) =>
+        !k.startsWith('banner_') && k !== 'profilePic' && k !== 'greetingMedia'
+      )
+    );
+    // Notas: excluir imagens base64 inline
+    const notesForCloud = (state.notes || []).map(n => ({ ...n, images: [] }));
+    const stateForCloud = {
+      ...state,
+      settings: settingsForCloud,
+      notes: notesForCloud,
+    };
+    await setDoc(doc(db, 'users', uid_user), { data: JSON.stringify(stateForCloud) });
   } catch (e) { console.warn('[Lúmen] Firestore save erro:', e); }
 }
 
@@ -90,6 +107,7 @@ async function loadFromFirestore() {
       const parsed = JSON.parse(snap.data().data);
       state = { ...state, ...parsed };
       _sanitizeState();
+      _recalcAccountBalances();
       localStorage.setItem('eco_v2', JSON.stringify(state));
       return true;
     }
@@ -117,6 +135,14 @@ function _sanitizeState() {
   if (!state.morningDone) state.morningDone = {};
   if (!state.focusQuotes) state.focusQuotes = ['respira fundo ✦'];
   state.currentTransType = null;
+
+  // Limpar entradas de morningDone com mais de 30 dias
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+  Object.keys(state.morningDone).forEach(dateKey => {
+    if (dateKey < cutoffStr) delete state.morningDone[dateKey];
+  });
 }
 
 function load() {
@@ -125,6 +151,7 @@ function load() {
     const parsed = JSON.parse(d);
     state = { ...state, ...parsed };
     _sanitizeState();
+    _recalcAccountBalances();
   }
 }
 function fmtEur(n) {
@@ -259,8 +286,25 @@ function exportData() {
   URL.revokeObjectURL(url); toast('Dados exportados!');
 }
 function clearAll() {
-  if (confirm('Tem a certeza? Esta ação apagará todos os seus dados.')) {
-    localStorage.removeItem('eco_v2'); location.reload();
+  if (confirm('Tem a certeza? Esta ação apagará todos os seus dados locais e na nuvem.')) {
+    // Apagar do Firestore antes de sair
+    const db = window._firestoreDb;
+    const uid_user = window._currentUid;
+    if (db && uid_user) {
+      import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(({ doc, deleteDoc }) => {
+        deleteDoc(doc(db, 'users', uid_user)).catch(e => console.warn('[Lúmen] clearAll Firestore erro:', e));
+      });
+    }
+    localStorage.removeItem('eco_v2');
+    localStorage.removeItem('lumen_user');
+    localStorage.removeItem('eco_user');
+    localStorage.setItem('lumen_logged_out', '1');
+    const doSignOut = window._doFirebaseSignOut;
+    if (typeof doSignOut === 'function') {
+      doSignOut().finally(() => { window.location.href = 'login.html'; });
+    } else {
+      window.location.href = 'login.html';
+    }
   }
 }
 
@@ -558,6 +602,14 @@ function updateCategorySelect() {
   sel.innerHTML = state.categories.map(c => `<option value="${c.name}">${c.icon} ${c.name}</option>`).join('');
 }
 
+function _recalcAccountBalances() {
+  state.accounts.forEach(acc => {
+    acc.balance = state.transactions
+      .filter(t => t.account === acc.name)
+      .reduce((sum, t) => sum + (t.type === 'income' ? t.amount : -t.amount), 0);
+  });
+}
+
 function addTransaction() {
   if (!state.currentTransType) { toast('Selecione Entrada ou Saída!'); return; }
   const title = document.getElementById('transTitle').value.trim();
@@ -571,8 +623,7 @@ function addTransaction() {
     date: document.getElementById('transDate').value || today(),
   };
   state.transactions.push(t);
-  const acc = state.accounts.find(a => a.name === t.account);
-  if (acc) acc.balance += t.type === 'income' ? t.amount : -t.amount;
+  _recalcAccountBalances();
   save();
   closeModal('transactionModal');
   renderFinance(); renderDashboard();
@@ -580,12 +631,8 @@ function addTransaction() {
 }
 
 function deleteTransaction(id) {
-  const t = state.transactions.find(t => t.id === id);
-  if (t) {
-    const acc = state.accounts.find(a => a.name === t.account);
-    if (acc) acc.balance -= t.type === 'income' ? t.amount : -t.amount;
-  }
   state.transactions = state.transactions.filter(t => t.id !== id);
+  _recalcAccountBalances();
   save(); renderFinance(); renderDashboard(); toast('Transação removida.');
 }
 
@@ -836,7 +883,7 @@ function deleteGoal(id) {
 function renderGoals() {
   const list = document.getElementById('goalsList');
   if (!list) return;
-  if (!state.goals.length) { list.innerHTML = '<div class="empty-state">Nenhuma meta ainda. Sonhe alto ◎</div>'; return; }
+  if (!state.goals.length) { list.innerHTML = '<div class="empty-state">Nenhuma meta ainda. Sonha alto ◎</div>'; return; }
   list.innerHTML = state.goals.map(g => {
     const pct = g.target > 0 ? Math.min(100, (g.current / g.target) * 100).toFixed(0) : 0;
     return `<div class="goal-card ${g.completed ? 'completed' : ''}">
@@ -922,7 +969,7 @@ function deleteNote(id) {
 function renderNotes() {
   const list = document.getElementById('notesList');
   if (!list) return;
-  if (!state.notes.length) { list.innerHTML = '<div class="empty-state">Crie sua primeira nota ✧</div>'; return; }
+  if (!state.notes.length) { list.innerHTML = '<div class="empty-state">Cria a tua primeira nota ✧</div>'; return; }
   list.innerHTML = state.notes.map(n => {
     const imgCount = n.images ? n.images.length : 0;
     let imgClass = '', imgsHtml = '';
@@ -982,7 +1029,7 @@ function deleteHabit(id) {
 function renderHabits() {
   const list = document.getElementById('habitsList');
   if (!list) return;
-  if (!state.habits.length) { list.innerHTML = '<div class="empty-state">Crie seu primeiro hábito ◉</div>'; return; }
+  if (!state.habits.length) { list.innerHTML = '<div class="empty-state">Cria o teu primeiro hábito ◉</div>'; return; }
   list.innerHTML = state.habits.map(h => {
     const count = h.counts[today()] || 0;
     const pct = Math.min(100, (count / h.goal) * 100);
@@ -1238,20 +1285,30 @@ function renderDashboard() {
           <div style="font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--text2);font-size:0.92rem;line-height:1.6;">${n.content ? n.content.slice(0, 160) + (n.content.length > 160 ? '…' : '') : ''}</div>
         </div></div>`;
     } else {
-      lastNote.textContent = 'Nenhuma nota ainda. Comece a registar seus pensamentos ✦';
+      lastNote.textContent = 'Nenhuma nota ainda. Começa a registar os teus pensamentos ✦';
     }
   }
 }
 
 function renderAll() {
-  renderTasks();
-  renderFinance();
-  renderGoals();
-  renderNotes();
-  renderHabits();
+  // Sempre actualiza o dashboard (está visível no overview)
   renderDashboard();
-  renderCalendar();
-  renderMorningRoutine();
+  // Só renderiza o módulo da página activa para evitar lag
+  const activePage = document.querySelector('.page.active');
+  if (!activePage) return;
+  const id = activePage.id.replace('page-', '');
+  switch (id) {
+    case 'planner':    renderTasks(); break;
+    case 'finance':    renderFinance(); break;
+    case 'goals':      renderGoals(); break;
+    case 'notes':      renderNotes(); break;
+    case 'habits':     renderHabits(); break;
+    case 'calendar':   renderCalendar(); break;
+    case 'morning':    renderMorningRoutine(); break;
+    case 'dashboard':
+      renderTasks(); renderFinance(); renderGoals(); renderNotes(); renderHabits();
+      break;
+  }
 }
 
 // ===== MODO FOCO NOTURNO =====
@@ -1582,12 +1639,7 @@ function restoreSpotifyWidget() {
 function checkAuth() {
   const raw = localStorage.getItem('lumen_user') || localStorage.getItem('eco_user');
   if (!raw) {
-    try {
-      const xhr = new XMLHttpRequest();
-      xhr.open('HEAD', 'login.html', false);
-      xhr.send();
-      if (xhr.status !== 404) window.location.href = 'login.html';
-    } catch(e) {}
+    window.location.href = 'login.html';
     return null;
   }
   return JSON.parse(raw);

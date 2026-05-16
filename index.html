@@ -743,10 +743,22 @@
 
   window._firestoreDb = db;
   window._firebaseStorage = storage;
+
+  // uid pendente: guardado aqui se o app.js ainda não registou _onFirebaseReady
+  window._pendingFirebaseUid = undefined;
+
   onAuthStateChanged(auth, async user => {
     window._currentUid = user ? user.uid : null;
-    if (user && typeof window._onFirebaseReady === 'function') {
-      window._onFirebaseReady(user.uid);
+    if (user) {
+      if (typeof window._onFirebaseReady === 'function') {
+        // app.js já registou o callback — chamar imediatamente
+        window._onFirebaseReady(user.uid);
+      } else {
+        // app.js ainda não está pronto — guardar uid para ser consumido depois
+        window._pendingFirebaseUid = user.uid;
+      }
+    } else {
+      window._pendingFirebaseUid = null;
     }
   });
   window._doFirebaseSignOut = async () => { try { await signOut(auth); } catch(e) {} };

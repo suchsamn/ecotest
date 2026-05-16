@@ -1755,7 +1755,9 @@ async function init() {
   document.querySelectorAll('input[type="date"]').forEach(el => { if (!el.value) el.value = today(); });
   setInterval(updateGreeting, 60000);
 
-  // Registar callback que o Firebase chama quando o auth estiver pronto
+  // Registar callback que o Firebase chama quando o auth estiver pronto.
+  // Se o Firebase já disparou antes deste código correr, _pendingFirebaseUid
+  // tem o uid guardado — consumimo-lo imediatamente.
   window._onFirebaseReady = async (uid) => {
     try {
       const loaded = await loadFromFirestore();
@@ -1787,8 +1789,12 @@ async function init() {
     }
   }, 6000);
 
-  // Caso o Firebase já esteja pronto (improvável mas possível)
-  if (window._currentUid && window._firestoreDb) {
+  // Consumir uid pendente: o Firebase disparou antes do app.js estar pronto
+  if (typeof window._pendingFirebaseUid === 'string') {
+    window._onFirebaseReady(window._pendingFirebaseUid);
+    window._pendingFirebaseUid = undefined;
+  } else if (window._currentUid && window._firestoreDb) {
+    // Fallback: uid já disponível por outra via
     window._onFirebaseReady(window._currentUid);
   }
 }
